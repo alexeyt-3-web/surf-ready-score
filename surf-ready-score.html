@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Surf-Ready Score</title>
+<script>
+/* Шрифты подключаются асинхронно, чтобы медленная сеть не задерживала запуск теста. */
+(function () {
+  try {
+    var l = document.createElement("link"); l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Onest:wght@400;500;600&display=swap";
+    document.head.appendChild(l);
+  } catch (x) {}
+  function box(msg) {
+    var z = document.getElementById("zones");
+    if (z && !z.children.length) z.innerHTML = '<p id="essmsg" style="margin-top:40px;padding:12px 14px;border:1px solid #F0A185;background:#FFE3D5;color:#66260F;border-radius:12px;font:500 14px/1.45 system-ui,sans-serif">' + msg + '</p>';
+  }
+  window.addEventListener("error", function (e) { box("Не удалось запустить тест. Сделай скриншот этого сообщения и пришли тренеру: " + String(e && e.message || "ошибка")); });
+  setTimeout(function () { if (!window.__essReady) box("Тест ещё не загрузился. Подожди несколько секунд и обнови страницу. Если ничего не меняется, проверь интернет."); }, 5000);
+})();
+</script>
+<style>
+/* Layout: одна колонка 680px. Только светлая тема: слоновая кость как фон, манго как солнце, морская пена как мелководье, тёмно-зелёный как тушь. Полинезийский бордюр под заголовком и над результатом. */
+:root {
+  --bg: #FBF9F0;              /* слоновая кость */
+  --surface: #FFFFFF;
+  --ink: #17302A;
+  --muted: #566B63;
+  --line: #E6E2CF;
+  --accent: #FFA51F;          /* манго: заливки, кнопка, полосы */
+  --accent-ink: #17302A;      /* текст на манго */
+  --accent-text: #C45300;     /* манго для текста и крупных цифр, контраст выше */
+  --sage: #D2EDE0;            /* морская пена: выбранное состояние */
+  --sage-deep: #3F9C80;
+    --warn-bg: #FFE3D5;
+  --warn-ink: #66260F;
+  --warn-line: #F0A185;
+  --f-display: "Manrope", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Onest", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "Manrope", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 500 16px/1.55 var(--f-body);
+  padding-inline: 16px; padding-block: 0 56px;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 680px; margin-inline: auto; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+p { margin: 0; }
+button, input { font: inherit; color: inherit; }
+
+/* sticky progress */
+.bar-top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  margin-inline: -16px; padding: 10px 16px;
+}
+.bar-top .wrap { display: flex; align-items: center; gap: 14px; }
+.mark { font: 800 15px/1 var(--f-display); letter-spacing: .06em; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; } .mark::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+.track { flex: 1; height: 6px; border-radius: 999px; overflow: hidden; background: var(--line); position: relative; min-width: 0; }
+.track i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); transition: width .25s ease; }
+.count { font: 600 13px/1 var(--f-mono); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* hero */
+.hero { padding-block: 40px 8px; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: clamp(40px, 11vw, 66px); line-height: 1; font-weight: 800; letter-spacing: -.035em; margin-top: 14px; }
+.lede { margin-top: 18px; font-size: 18px; line-height: 1.5; max-width: 56ch; }
+.rules { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px 24px; }
+.rules li { border-top: 3px solid var(--accent); padding-top: 10px; font-size: 14.5px; line-height: 1.45; color: var(--muted); font-weight: 500; }
+.rules b { display: block; color: var(--ink); font: 700 16px/1.3 var(--f-display); letter-spacing: -.005em; margin-bottom: 4px; }
+
+.wave { display: block; width: 100%; height: 44px; margin-top: 30px; color: var(--ink); }
+.wave .pi { fill: currentColor; } .wave .pt { fill: currentColor; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; } .wave .ph { fill: var(--bg); } .wave .pw { fill: none; stroke: var(--bg); stroke-width: 6; stroke-linecap: round; }
+/* zones */
+.zone { margin-top: 48px; }
+.zone-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--ink); padding-bottom: 8px; }
+.zone-head h2 { font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -.02em; }
+.zone-head span { font: 600 12px/1 var(--f-mono); color: var(--muted); white-space: nowrap; }
+fieldset.test { border: 0; border-bottom: 1px solid var(--line); margin: 0; padding: 22px 0 24px; min-width: 0; }
+fieldset.test legend { padding: 0; font: 800 19px/1.3 var(--f-display); letter-spacing: -.01em; float: left; width: 100%; margin-bottom: 10px; }
+fieldset.test legend + * { clear: both; }
+.note { font-size: 13.5px; color: var(--muted); margin-top: 8px; }
+.note.warn { color: var(--warn-ink); background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 10px; padding: 8px 12px; }
+details.how { margin: 0 0 12px; }
+details.how summary { cursor: pointer; font: 500 13px/1.4 var(--f-mono); color: var(--muted); list-style: none; display: inline-flex; gap: 8px; align-items: center; padding: 4px 0; }
+details.how summary::-webkit-details-marker { display: none; }
+details.how summary::before { content: "+"; display: inline-block; width: 18px; text-align: center; border: 1px solid var(--line); border-radius: 50%; line-height: 16px; }
+details.how[open] summary::before { content: "–"; }
+details.how p { font-size: 15px; color: var(--ink); margin-top: 6px; max-width: 60ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.chip span { display: block; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); font: 500 13.5px/1.2 var(--f-body); background: var(--surface); }
+.chip input:checked + span { background: var(--sage); color: var(--ink); border-color: var(--sage-deep); font-weight: 600; }
+.chip input:focus-visible + span, .opt input:focus-visible + .box { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.opts { display: grid; gap: 8px; }
+.opt { position: relative; display: block; }
+.opt input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.opt .box { font-weight: 500; display: grid; grid-template-columns: 18px 1fr; gap: 12px; align-items: start; padding: 13px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font-size: 15px; line-height: 1.4; transition: border-color .12s, background .12s; box-shadow: 0 1px 0 rgba(180,140,60,.08); }
+.opt .dot { width: 16px; height: 16px; border: 1.5px solid var(--muted); border-radius: 50%; margin-top: 2px; position: relative; }
+.opt:hover .box { border-color: var(--muted); }
+.opt input:checked + .box { border-color: var(--sage-deep); background: var(--sage); box-shadow: inset 0 0 0 1px var(--sage-deep); }
+.opt input:checked + .box .dot { border-color: var(--ink); }
+.opt input:checked + .box .dot::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--ink); }
+.opt.stop .box { border-style: dashed; }
+.opt.stop .box .t::before { content: "Стоп: "; font-weight: 600; }
+
+/* extension flag */
+.sub { margin-top: 18px; padding-left: 14px; border-left: 3px solid var(--sage-deep); display: grid; gap: 4px; }
+.sub[hidden] { display: none; }
+
+/* actions */
+.go { margin-top: 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.btn { appearance: none; border: 0; cursor: pointer; background: var(--accent); color: var(--accent-ink); font: 700 16px/1 var(--f-display); letter-spacing: -.005em; padding: 17px 30px; min-height: 54px; border-radius: 999px; }
+.btn:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); padding: 13px 20px; min-height: 0; font-size: 14.5px; }
+.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.left { font: 600 13px/1.3 var(--f-mono); color: var(--muted); }
+
+/* result */
+#result { margin-top: 56px; padding-top: 0; scroll-margin-top: 70px; }
+#result[hidden] { display: none; }
+.score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.score .n { font: 800 clamp(96px, 28vw, 160px)/.84 var(--f-display); letter-spacing: -.05em; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.score .of { font: 600 22px/1 var(--f-mono); color: var(--muted); }
+.prio { margin-top: 18px; font-size: 19px; line-height: 1.4; }
+.prio b { font-family: var(--f-display); font-weight: 800; background: linear-gradient(transparent 62%, var(--accent) 62%); padding-inline: 2px; }
+.delta { margin-top: 6px; font: 600 13.5px/1.4 var(--f-mono); color: var(--muted); }
+.zones { margin-top: 28px; display: grid; gap: 14px; }
+.zrow { display: grid; grid-template-columns: minmax(96px, 150px) 1fr 44px; align-items: center; gap: 12px; }
+.zrow .zn { font-size: 14.5px; line-height: 1.25; }
+.zrow .zn em { display: block; font: 700 10.5px/1.3 var(--f-mono); font-style: normal; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-text); margin-top: 2px; }
+.zrow .tr { height: 12px; border-radius: 999px; overflow: hidden; background: var(--line); position: relative; }
+.zrow .tr i { position: absolute; inset: 0 auto 0 0; background: var(--sage-deep); border-radius: 999px; }
+.zrow.p .tr i { background: var(--accent); }
+.zrow .zv { font: 700 14px/1 var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.scale { display: grid; grid-template-columns: minmax(96px, 150px) 1fr 44px; gap: 12px; margin-top: -6px; }
+.scale div { grid-column: 2; display: flex; justify-content: space-between; font: 400 11px/1 var(--f-mono); color: var(--muted); }
+.flags { margin-top: 28px; display: grid; gap: 10px; }
+.flag { background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); border-radius: 14px; padding: 14px 16px; font-size: 15px; line-height: 1.45; }
+.flag b { display: block; font: 800 14px/1.3 var(--f-display); margin-bottom: 3px; }
+.next { margin-top: 32px; display: grid; gap: 22px; }
+.next h3 { font-size: 18px; font-weight: 800; letter-spacing: -.015em; border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 6px; }
+.next p, .next li { font-size: 15.5px; color: var(--ink); max-width: 62ch; }
+.next ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.next .m { color: var(--muted); }
+.actions { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 10px; }
+.tip { font: 600 13px/1.3 var(--f-mono); color: var(--muted); align-self: center; }
+footer { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 14px; font: 500 12.5px/1.5 var(--f-body); color: var(--muted); }
+
+@media (max-width: 440px) {
+  .zrow, .scale { grid-template-columns: 92px 1fr 36px; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .track i { transition: none; } }
+</style>
+
+<div class="bar-top"><div class="wrap">
+  <span class="mark">SRS</span>
+  <div class="track" aria-hidden="true"><i id="pbar"></i></div>
+  <span class="count" id="pcount" aria-live="polite">0 / 11</span>
+</div></div>
+
+<main class="wrap">
+  <header class="hero">
+    <div class="eyebrow">Eat-Sleep-Surf · Модуль 0</div>
+    <h1>Surf-Ready Score</h1>
+    <p class="lede">Одиннадцать тестов дома: коврик, стена, мяч, скотч и таймер. На выходе число от 0 до 10 и самое слабое место, с которого стоит начинать. Бесплатно. Результат остаётся на твоём устройстве.</p>
+    <ul class="rules">
+      <li><b>Не льсти себе</b>Сомневаешься между двумя вариантами, бери тот, что хуже. Скрининг не обязан нравиться.</li>
+      <li><b>Это не диагностика</b>Боль, головокружение или травма в анамнезе: старт обсуди со специалистом.</li>
+      <li><b>Про катание не спрашиваем</b>Уровень в воде и физическая готовность живут на разных шкалах.</li>
+    </ul>
+    <svg class="wave" height="44" aria-hidden="true"><defs><pattern id="tatau" width="200" height="74" patternUnits="userSpaceOnUse" patternTransform="scale(.6)">
+      <rect class="pi" x="0" y="0" width="200" height="25"/>
+      <path class="pt" d="M2 60 Q7.3 53.4 10 45 Q14.4 53.2 21 60 Q11.5 59.1 2 60Z"/>
+      <path class="pt" d="M26 61 Q27.2 51.9 31 41 Q35.6 51.7 38 61 Q32.0 61.9 26 61Z"/>
+      <path class="pt" d="M43 60 Q50.8 54.4 56 47 Q59.9 54.2 66 60 Q54.5 59.1 43 60Z"/>
+      <path class="pt" d="M72 59.5 Q73.2 51.4 77 41.5 Q86.1 51.2 93 59.5 Q82.5 60.4 72 59.5Z"/>
+      <path class="pt" d="M98 60.5 Q101.8 50.4 103 38.5 Q105.4 50.2 110 60.5 Q104.0 59.6 98 60.5Z"/>
+      <path class="pt" d="M116 60 Q121.2 53.9 129 46 Q136.1 53.7 141 60 Q128.5 60.9 116 60Z"/>
+      <path class="pt" d="M146 61 Q149.8 52.4 151 42 Q156.9 52.2 165 61 Q155.5 60.1 146 61Z"/>
+      <path class="pt" d="M171 60 Q177.2 52.9 186 44 Q192.6 52.7 197 60 Q184.0 60.9 171 60Z"/>
+      <rect class="pi" x="0" y="67" width="200" height="3"/>
+      <rect class="pi" x="0" y="72" width="200" height="1.4"/>
+    </pattern></defs><rect width="100%" height="44" fill="url(#tatau)"/></svg>
+  </header>
+
+  <div id="zones"></div>
+  <noscript><p class="note warn" style="margin-top:32px">Для теста нужен включённый JavaScript.</p></noscript>
+
+  <section class="zone" id="extzone">
+    <div class="zone-head"><h2>Флаг разгибания</h2><span>вне SRS</span></div>
+    <fieldset class="test">
+      <legend>Бывает ли дискомфорт в пояснице?</legend>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="hist" value="no" checked><span class="box"><span class="dot"></span><span class="t">Нет. Этот блок пропускается.</span></span></label>
+        <label class="opt"><input type="radio" name="hist" value="yes"><span class="box"><span class="dot"></span><span class="t">Да, бывает или бывало.</span></span></label>
+      </div>
+      <div class="sub" id="extsub" hidden>
+        <p class="note">Лёжа на животе, 10 плавных подъёмов в упор на предплечья. Потом 10 плавных подтягиваний коленей к груди. После каждого движения отметь, что стало с ощущениями в пояснице и ноге.</p>
+        <fieldset class="test" style="border:0;padding:12px 0 6px">
+          <legend style="font-size:17px">После разгибания</legend>
+          <div class="opts" id="extopts"></div>
+        </fieldset>
+        <fieldset class="test" style="border:0;padding:6px 0 0">
+          <legend style="font-size:17px">После сгибания</legend>
+          <div class="opts" id="flexopts"></div>
+        </fieldset>
+        <p class="note">Не классификация по Маккензи, она требует специалиста. Упрощённый ориентир. Смешанный или неочевидный ответ флаг не включает.</p>
+      </div>
+    </fieldset>
+  </section>
+
+  <div class="go">
+    <button class="btn" id="calc" disabled>Посчитать SRS</button>
+    <span class="left" id="left">Осталось 11 тестов</span>
+  </div>
+
+  <section id="result" hidden aria-live="polite"></section>
+
+  <footer>
+    Eat-Sleep-Surf · Модуль 0, версия 6. SRS ничего не открывает и не закрывает: это самопроверка, решения принимаешь ты. Не заменяет врача.
+  </footer>
+</main>
+
+<script>
+(function () {
+/*PURE*/
+var ZONES = [
+  { id: "shoulders", name: "Плечи и грудной отдел" },
+  { id: "hips", name: "ТБС" },
+  { id: "core", name: "Кор" },
+  { id: "balance", name: "Баланс" },
+  { id: "strength", name: "Сила" }
+];
+
+function computeSRS(answers) {
+  // answers: { testId: { zone, s } } -> среднее по тестам зоны, SRS = сумма пяти зон
+  var zones = ZONES.map(function (z) {
+    var vals = Object.keys(answers).filter(function (k) { return answers[k].zone === z.id; })
+      .map(function (k) { return answers[k].s; });
+    var avg = vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : 0;
+    return { id: z.id, name: z.name, v: avg };
+  });
+  var srs = zones.reduce(function (a, z) { return a + z.v; }, 0);
+  var min = Math.min.apply(null, zones.map(function (z) { return z.v; }));
+  zones.forEach(function (z) { z.priority = Math.abs(z.v - min) < 1e-9; });
+  return { srs: srs, zones: zones };
+}
+
+function extensionFlag(ext, flex) {
+  // ext: better | same | worse | down ; flex: better | same | worse
+  var extBad = ext === "worse" || ext === "down";
+  var opposite = (ext === "better" && flex === "worse") || (extBad && flex === "better");
+  return extBad || opposite;
+}
+/*ENDPURE*/
+
+var TESTS = [
+  { id: "apley", zone: "shoulders", name: "Apley scratch test",
+    how: "Двумя руками, спина прямая, можно сидя. Рука, заведённая снизу, не помогает себе после захвата. Сантиметры не считаем.",
+    opts: [[2, "Пальцы касаются с обеих сторон"], [1, "Касание только с одной стороны"], [0, "Касания нет"]] },
+  { id: "wall", zone: "shoulders", name: "Wall slide",
+    how: "Спиной к стене: ягодицы, лопатки и затылок прижаты, стопы в 10–15 см от стены. Руки согнуты под 90° (буква «Ш»). Пальцами одной руки контролируй естественный изгиб поясницы. Выпрями руки вверх, не отрывая точки контакта.",
+    opts: [[2, "Все точки контакта (затылок, лопатки, поясница, локти, кисти) прижаты до полного выпрямления рук"], [1, "Один сегмент отрывается до выпрямления"], [0, "Исходное положение не принимается без прогиба в пояснице"]] },
+  { id: "9090", zone: "hips", name: "Тест 90/90",
+    how: "Сидя, обе ноги согнуты под 90°. Перейди из стороны в сторону без опоры на руки, затем оторви колено задней ноги от пола.",
+    opts: [[2, "Переход без рук, голова не наклоняется, спина преимущественно прямая, обе голени прижаты к полу, колено отрывается без компенсации спиной"], [1, "Переход с помощью рук или со сгибанием шеи, колено отрывается с компенсацией спиной (наклон головы)"], [0, "Голени не прижимаются к полу, компенсация спиной или головой уже в исходном положении"]] },
+  { id: "thomas", zone: "hips", name: "Тест Томаса", side: true,
+    how: "Лёжа на спине на краю кровати или дивана. Одно колено подтяни к груди руками, вторая нога свободно свисает. Смотрим на неё. Каждая сторона отдельно.",
+    opts: [[2, "Бедро свободной ноги лежит на поверхности, колено сохраняет естественный сгиб"], [1, "Бедро слегка приподнимается ИЛИ колено частично разгибается"], [0, "Бедро явно приподнимается и/или колено полностью выпрямляется"]] },
+  { id: "core1", zone: "core", name: "Разгибатели спины",
+    variants: [
+      { id: "bs", label: "Беринг-Соренсен (с партнёром)",
+        how: "Лицом вниз, таз на краю стола или кровати, корпус от гребня подвздошной кости свисает. Партнёр держит голени и стопы. Руки скрещены на груди. Подними корпус до горизонтали и держи. Таймер стартует с горизонтали.",
+        opts: [[2, "Больше 120 секунд"], [1, "60–120 секунд"], [0, "Меньше 60 секунд"]] },
+      { id: "pbe", label: "Prone ball extension (без партнёра)",
+        how: "Животом на фитбол или плотный валик, таз и низ живота на опоре. Стопы упираются в стену или зацеплены под тяжёлую мебель. Руки на груди. Разогни корпус до горизонтали и держи. Равноценная замена Берингу-Соренсену, выбор за тобой.",
+        opts: [[2, "Больше 90 секунд"], [1, "60–90 секунд"], [0, "Меньше 60 секунд"]] }
+    ],
+    stop: { s: 0, flag: "bs", t: "Боль в пояснице раньше 60 секунд" },
+    note: "Боль в пояснице раньше 60 секунд: останови тест, он засчитывается как 0." },
+  { id: "plank", zone: "core", name: "Боковой упор в динамике", side: true,
+    how: "Боковой упор, ритмично поднимай и опускай таз 40 секунд на каждую сторону. Считаем стабильность амплитуды, не количество повторений.",
+    opts: [[2, "40 секунд, амплитуда стабильна весь подход"], [1, "40 секунд, амплитуда заметно падает во второй половине или частично проваливаются рёбра"], [0, "Не удалось закончить 40 секунд или амплитуда рухнула рано"]] },
+  { id: "ybt", zone: "balance", name: "Y-Balance (домашний)", side: true,
+    how: "Три полоски скотча из одной точки: вперёд, назад-внутрь, назад-наружу, на глаз. Стоя на одной ноге в центре, свободной тянись вдоль каждой полоски как можно дальше, лёгкое касание носком, без переноса веса. Три попытки на направление, засчитывается лучшая, затем смена ноги. Сантиметры не сравниваем, оцениваем качество контроля.",
+    note: "Покачивание сам себе не всегда видно. Если можно, пусть смотрит партнёр или сними на телефон.",
+    opts: [[2, "Стабильный контроль во всех трёх направлениях на обеих ногах"], [1, "Частичная потеря контроля в одном-двух направлениях (касание пола или заметное покачивание)"], [0, "Многократная потеря равновесия в нескольких направлениях"]] },
+  { id: "tandem", zone: "balance", name: "Тандемная ходьба с поворотами головы",
+    how: "Носок к пятке, 10 шагов, поворачивая голову влево и вправо.",
+    opts: [[2, "10 шагов стабильно, без отклонения"], [1, "Отклонения без потери курса"], [0, "Потеря равновесия или курса"]],
+    stop: { s: 0, flag: "vest", t: "Выраженное головокружение, потеря ориентации или тошнота" } },
+  { id: "reflex", zone: "balance", name: "Reflex Catch", side: true,
+    how: "Стоя на одной ноге, бросай мяч в стену с небольшого расстояния и лови отскок, не касаясь пола свободной ногой. Каждая нога отдельно.",
+    note: "Авторский практический тест, не валидированный клинический инструмент.",
+    opts: [[2, "8 и больше ловель подряд"], [1, "4–7 ловель"], [0, "Меньше 4"]] },
+  { id: "squat", zone: "strength", name: "Приседания 45 секунд",
+    how: "Средний темп. Считаем не количество, а сохранение нейтрали коленей и амплитуды. Если есть партнёр, пусть следит за темпом и амплитудой.",
+    opts: [[2, "45 секунд без потери нейтрали коленей и амплитуды"], [1, "Колено уходит внутрь или амплитуда падает после 30-й секунды"], [0, "То же самое случается сразу или раньше 30-й секунды"]] },
+  { id: "push", zone: "strength", name: "Отжимания до отказа",
+    how: "До угла 90° в локтях. Линия плечи–таз–пятки прямая весь подход; провал таза или округление спины означают конец подхода. Отдых вверху не больше 1–2 секунд. Вариант выбирай по тому, можешь ли ты чисто сделать стандартные, а не по полу.",
+    variants: [
+      { id: "std", label: "Стандартные", opts: [[2, "Больше 35"], [1, "25–34"], [0, "Меньше 25"]] },
+      { id: "knee", label: "С колен", opts: [[2, "Больше 30"], [1, "19–29"], [0, "Меньше 19"]] }
+    ] }
+];
+var ZONE_ORDER = ZONES.map(function (z) { return z.id; });
+var ans = {};       // testId -> { zone, s, flag }
+var variant = {};   // testId -> variantId
+var hist = "no", extA = null, flexA = null;
+var KEY = "ess-srs-last";
+
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function $(id) { return document.getElementById(id); }
+
+function optsFor(t) {
+  if (t.variants) {
+    var v = t.variants.filter(function (x) { return x.id === variant[t.id]; })[0];
+    return v.opts;
+  }
+  return t.opts;
+}
+function howFor(t) {
+  if (t.variants) {
+    var v = t.variants.filter(function (x) { return x.id === variant[t.id]; })[0];
+    return v.how || t.how;
+  }
+  return t.how;
+}
+
+function renderTest(t) {
+  var h = '<fieldset class="test" id="t-' + t.id + '"><legend>' + esc(t.name) + '</legend>';
+  if (t.variants) {
+    h += '<div class="chips" role="radiogroup" aria-label="Вариант теста">';
+    t.variants.forEach(function (v) {
+      h += '<label class="chip"><input type="radio" name="v-' + t.id + '" value="' + v.id + '"' + (variant[t.id] === v.id ? " checked" : "") + '><span>' + esc(v.label) + '</span></label>';
+    });
+    h += '</div>';
+  }
+  h += '<details class="how"><summary>Как выполнить</summary><p>' + esc(howFor(t)) + '</p></details>';
+  h += '<div class="opts">';
+  optsFor(t).forEach(function (o, i) {
+    h += '<label class="opt"><input type="radio" name="a-' + t.id + '" value="' + i + '"><span class="box"><span class="dot"></span><span class="t">' + esc(o[1]) + '</span></span></label>';
+  });
+  if (t.stop) {
+    h += '<label class="opt stop"><input type="radio" name="a-' + t.id + '" value="stop"><span class="box"><span class="dot"></span><span class="t">' + esc(t.stop.t) + '</span></span></label>';
+  }
+  h += '</div>';
+  if (t.side) h += '<p class="note">Стороны разные? Выбирай результат худшей стороны.</p>';
+  if (t.note) h += '<p class="note' + (t.stop ? " warn" : "") + '">' + esc(t.note) + '</p>';
+  return h + '</fieldset>';
+}
+
+function renderAll() {
+  TESTS.forEach(function (t) { if (t.variants && !variant[t.id]) variant[t.id] = t.variants[0].id; });
+  var html = "";
+  ZONES.forEach(function (z) {
+    var ts = TESTS.filter(function (t) { return t.zone === z.id; });
+    html += '<section class="zone"><div class="zone-head"><h2>' + esc(z.name) + '</h2><span>тестов: ' + ts.length + '</span></div>';
+    ts.forEach(function (t) { html += renderTest(t); });
+    html += '</section>';
+  });
+  $("zones").innerHTML = html;
+
+  var extHtml = [["better", "Лучше"], ["same", "Без изменений или неясно"], ["worse", "Явно хуже"], ["down", "Хуже, и ощущение спускается ниже по ноге"]];
+  var flexHtml = [["better", "Лучше"], ["same", "Без изменений или неясно"], ["worse", "Хуже"]];
+  function mk(name, arr) { return arr.map(function (o) { return '<label class="opt"><input type="radio" name="' + name + '" value="' + o[0] + '"><span class="box"><span class="dot"></span><span class="t">' + o[1] + '</span></span></label>'; }).join(""); }
+  $("extopts").innerHTML = mk("ext", extHtml);
+  $("flexopts").innerHTML = mk("flex", flexHtml);
+}
+
+function testById(id) { return TESTS.filter(function (t) { return t.id === id; })[0]; }
+
+function progress() {
+  var n = Object.keys(ans).length, total = TESTS.length;
+  var extOk = hist === "no" || (extA && flexA);
+  $("pbar").style.width = (n / total * 100) + "%";
+  $("pcount").textContent = n + " / " + total;
+  var left = total - n;
+  var ready = left === 0 && extOk;
+  $("calc").disabled = !ready;
+  $("left").textContent = left > 0 ? "Осталось тестов: " + left : (extOk ? "Всё заполнено" : "Заполни оба ответа в блоке разгибания");
+}
+
+document.addEventListener("change", function (e) {
+  var el = e.target; if (!el || el.type !== "radio") return;
+  var name = el.name;
+  if (name.indexOf("v-") === 0) {
+    var id = name.slice(2); variant[id] = el.value; delete ans[id];
+    var t = testById(id), box = $("t-" + id);
+    var tmp = document.createElement("div"); tmp.innerHTML = renderTest(t);
+    box.replaceWith(tmp.firstChild);
+    progress(); return;
+  }
+  if (name.indexOf("a-") === 0) {
+    var tid = name.slice(2), test = testById(tid);
+    if (el.value === "stop") ans[tid] = { zone: test.zone, s: test.stop.s, flag: test.stop.flag };
+    else ans[tid] = { zone: test.zone, s: optsFor(test)[+el.value][0], flag: null };
+    progress(); return;
+  }
+  if (name === "hist") { hist = el.value; $("extsub").hidden = hist !== "yes"; progress(); return; }
+  if (name === "ext") { extA = el.value; progress(); return; }
+  if (name === "flex") { flexA = el.value; progress(); return; }
+});
+
+function f1(x) { return (Math.round(x * 10) / 10).toFixed(1); }
+
+function show() {
+  var r = computeSRS(ans);
+  var prio = r.zones.filter(function (z) { return z.priority; });
+  var prioNames = prio.map(function (z) { return z.name; });
+  var prevRaw = null; try { prevRaw = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+  var h = '<svg class="wave" height="44" aria-hidden="true" style="margin:0 0 22px"><rect width="100%" height="44" fill="url(#tatau)"/></svg><div class="eyebrow">Твой результат</div>';
+  h += '<div class="score"><span class="n">' + f1(r.srs) + '</span><span class="of">/ 10</span></div>';
+  h += '<p class="prio">Приоритетная зона: <b>' + esc(prioNames.join(", ")) + '</b>.</p>';
+  if (prevRaw && typeof prevRaw.srs === "number") {
+    var d = r.srs - prevRaw.srs, dt = "";
+    try { dt = new Date(prevRaw.at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" }); } catch (e) {}
+    h += '<p class="delta">Прошлый раз' + (dt ? ", " + dt : "") + ": " + f1(prevRaw.srs) + " (" + (d >= 0.05 ? "+" : "") + f1(d) + ")</p>";
+  }
+  h += '<div class="zones">';
+  r.zones.forEach(function (z) {
+    h += '<div class="zrow' + (z.priority ? " p" : "") + '"><div class="zn">' + esc(z.name) + (z.priority ? "<em>приоритет</em>" : "") + '</div><div class="tr"><i style="width:' + (z.v / 2 * 100) + '%"></i></div><div class="zv">' + f1(z.v) + '</div></div>';
+  });
+  h += '<div class="scale"><div><span>0</span><span>1</span><span>2</span></div></div></div>';
+
+  var flags = "";
+  Object.keys(ans).forEach(function (k) {
+    if (ans[k].flag === "bs") flags += '<div class="flag"><b>Красный флаг: поясница</b>Боль в пояснице раньше 60 секунд. Тест засчитан как 0. Это сигнал, что дискомфорт в пояснице уже есть или скоро появится. Если боль повторяется, обсуди старт со специалистом.</div>';
+    if (ans[k].flag === "vest") flags += '<div class="flag"><b>Красный флаг: вестибулярный</b>Выраженное головокружение, потеря ориентации или тошнота при поворотах головы. Это функциональный скрининг, не диагностика. Обратись к врачу до начала программы.</div>';
+  });
+  if (hist === "yes" && extensionFlag(extA, flexA)) {
+    flags += '<div class="flag"><b>Флаг разгибания</b>Разгибание пока не твоё дружественное направление. Это не диагноз. Корректируем, не останавливаем: меньше Rib Stack Hold, аккуратнее с объёмом гребли в длительном прогибе, без Rib Stack Extension. Упомяни врачу, когда будет удобно. Режима «стоп, жди разрешения» тут нет.</div>';
+  }
+  if (flags) h += '<div class="flags">' + flags + '</div>';
+  var notes = "Остановленный тест засчитан как 0. Сами флаги в сумму не входят.";
+  if (flags) h += '<p class="note">' + notes + '</p>';
+
+  h += '<div class="next">';
+  h += '<div><h3>С чего стартуем</h3><p>Стартовый модуль определяется по приоритетной зоне, а не по общему числу: узкое место определяет риск. Это не «твой уровень низкий», а точка, с которой быстрее и без травм дойти до нужного места. Сильный серфер со слабым плечевым поясом идёт по базовому Модулю 1, и это параллельный трек, не понижение.</p></div>';
+  h += '<div><h3>Когда пересдавать</h3><ul>' +
+       '<li>При активном трипе: на каждой смене фазы. Вход в Building Swell, затем Peak Set, затем Glass Off.</li>' +
+       '<li>После трипа обязательно, при возврате в поддерживающий режим.</li>' +
+       '<li>Без трипа: каждые 4–6 недель, на разгрузочной неделе.</li>' +
+       '<li class="m">Запасной вариант: раз в месяц, если так проще не забывать.</li></ul></div>';
+  h += '</div>';
+  var summary = "SRS " + f1(r.srs) + "/10, приоритетная зона: " + prioNames.join(", ");
+  h += '<div class="actions"><button class="btn ghost" id="copy">Скопировать результат</button><button class="btn ghost" id="again">Пройти заново</button><span class="tip" id="tip"></span></div>';
+
+  var res = $("result"); res.innerHTML = h; res.hidden = false;
+  try { localStorage.setItem(KEY, JSON.stringify({ srs: r.srs, at: Date.now() })); } catch (e) {}
+  res.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+
+  $("copy").onclick = function () {
+    function done(ok) { $("tip").textContent = ok ? "Скопировано" : "Не вышло, выдели текст выше вручную"; }
+    try { navigator.clipboard.writeText(summary).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
+  };
+  $("again").onclick = function () {
+    ans = {}; variant = {}; hist = "no"; extA = null; flexA = null;
+    res.hidden = true; res.innerHTML = "";
+    $("extsub").hidden = true;
+    var hs = document.querySelectorAll('input[name="hist"]'); hs[0].checked = true;
+    renderAll(); progress(); window.scrollTo({ top: 0 });
+  };
+}
+
+$("calc").addEventListener("click", show);
+renderAll(); progress();
+window.__essReady = true;
+var mm = document.getElementById("essmsg"); if (mm) mm.remove();
+})();
+</script>
+
+</body></html>
