@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Планировщик трипа</title>
+<script>
+/* Шрифты подключаются асинхронно, чтобы медленная сеть не задерживала запуск. */
+(function () {
+  try {
+    var l = document.createElement("link"); l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Onest:wght@400;500;600&display=swap";
+    document.head.appendChild(l);
+  } catch (x) {}
+  window.addEventListener("error", function (e) {
+    var m = document.getElementById("errbox");
+    if (m) { m.hidden = false; m.textContent = "Не удалось запустить расчёт: " + String(e && e.message || "ошибка") + ". Сделай скриншот и пришли тренеру."; }
+  });
+})();
+</script>
+<style>
+:root {
+  --bg: #FBF9F0; --surface: #FFFFFF; --ink: #17302A; --muted: #566B63; --line: #E6E2CF;
+  --accent: #FFA51F; --accent-text: #C45300; --sage: #D2EDE0; --sage-deep: #3F9C80;
+  --warn-bg: #FFE3D5; --warn-ink: #66260F; --warn-line: #F0A185;
+  --f-display: "Manrope", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Onest", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 500 16px/1.55 var(--f-body); padding: 0 16px 56px; -webkit-text-size-adjust: 100%; overflow-x: clip; }
+[hidden] { display: none !important; }
+.wrap { max-width: 680px; margin-inline: auto; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
+p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+.top { padding: 14px 0 0; }
+.mark { font: 800 15px/1 var(--f-display); letter-spacing: .06em; display: inline-flex; align-items: center; gap: 8px; }
+.mark::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+.hero { padding-block: 28px 8px; }
+.eyebrow { font: 600 12px/1 var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: clamp(36px, 10vw, 60px); line-height: 1; font-weight: 800; letter-spacing: -.035em; margin-top: 14px; }
+.lede { margin-top: 16px; font-size: 18px; line-height: 1.5; max-width: 56ch; }
+.step { margin-top: 40px; }
+.step-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--ink); padding-bottom: 8px; }
+.step-head .n { font: 800 14px/1 var(--f-display); color: var(--accent-text); }
+.step-head h2 { font-size: 22px; line-height: 1.2; font-weight: 800; letter-spacing: -.02em; }
+.hint { font-size: 14px; color: var(--muted); margin-top: 10px; max-width: 60ch; }
+.field { margin-top: 16px; display: grid; gap: 6px; }
+.field label, .field .lab { font: 700 14px/1.3 var(--f-display); }
+.inp { width: 100%; min-height: 50px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-size: 16px; }
+.inp:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.mods { display: grid; gap: 12px; margin-top: 16px; }
+.mod { display: grid; grid-template-columns: 1fr 150px; gap: 12px; align-items: center; }
+.mod .nm { font: 700 15px/1.3 var(--f-display); }
+.mod .nm small { display: block; font: 500 12.5px/1.3 var(--f-body); color: var(--muted); margin-top: 2px; }
+.badge { display: inline-block; margin-top: 12px; padding: 6px 12px; border-radius: 999px; background: var(--sage); border: 1px solid var(--sage-deep); font: 700 13px/1.2 var(--f-display); }
+.badge.bad { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+
+.res { margin-top: 48px; }
+.res-title { font-size: 28px; font-weight: 800; letter-spacing: -.025em; }
+.bar { display: flex; height: 22px; border-radius: 999px; overflow: hidden; margin-top: 18px; background: var(--line); }
+.bar i { display: block; height: 100%; min-width: 4px; }
+.s-bs { background: var(--sage-deep); } .s-ps { background: var(--accent); } .s-go { background: var(--ink); }
+.phases { margin-top: 16px; display: grid; gap: 10px; }
+.ph { display: grid; grid-template-columns: 14px 1fr auto; gap: 12px; align-items: start; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ph .sw { width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; }
+.ph b { font: 800 17px/1.3 var(--f-display); display: block; }
+.ph .dt { font-size: 13.5px; color: var(--muted); }
+.ph .wk { font: 800 20px/1.2 var(--f-display); text-align: right; white-space: nowrap; }
+.ph .wk small { display: block; font: 500 12px/1.2 var(--f-body); color: var(--muted); }
+.box2 { margin-top: 24px; display: grid; gap: 14px; }
+.card { padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.card h3 { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+.card p { font-size: 15px; line-height: 1.45; }
+.card.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+.card.ok { background: var(--sage); border-color: var(--sage-deep); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.tab { position: relative; }
+.tab input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; }
+.tab span { display: block; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font: 600 13.5px/1.2 var(--f-display); }
+.tab input:checked + span { background: var(--sage); border-color: var(--sage-deep); font-weight: 800; }
+.tab input:focus-visible + span { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.todo { display: grid; gap: 10px; margin-top: 14px; }
+.td { padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.td .hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.td .hd b { font: 800 16px/1.3 var(--f-display); }
+.td .tag { font: 700 12px/1.2 var(--f-display); padding: 3px 9px; border-radius: 999px; background: var(--line); }
+.td .tag.f { background: var(--accent); }
+.td .vol { font: 600 13px/1.3 var(--f-display); color: var(--muted); }
+.td p { margin-top: 6px; font-size: 14.5px; line-height: 1.45; }
+.actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.libl { margin: 10px 0 0; font-size: 14.5px; } .libl a { color: var(--accent-text); font-weight: 700; }
+.btn { appearance: none; border: 1.5px solid var(--ink); background: transparent; cursor: pointer; font: 700 14.5px/1 var(--f-display); padding: 13px 20px; border-radius: 999px; }
+.btn.main { background: var(--accent); border-color: var(--accent); }
+.tip { font: 600 13px/1.3 var(--f-display); color: var(--muted); }
+.legend { margin-top: 48px; }
+.legend h2 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; border-bottom: 1px solid var(--ink); padding-bottom: 8px; }
+.lg { margin-top: 14px; display: grid; gap: 12px; }
+.lg div { border-top: 3px solid var(--accent); padding-top: 8px; font-size: 14.5px; color: var(--muted); }
+.lg b { display: block; color: var(--ink); font: 800 16px/1.3 var(--f-display); }
+.nojs { margin-top: 24px; padding: 14px 16px; border: 1.5px solid var(--ink); border-radius: 14px; background: var(--surface); font-size: 15px; }
+html.js .nojs { display: none; }
+html:not(.js) .app { display: none; }
+.err { margin-top: 20px; padding: 12px 14px; border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-ink); border-radius: 12px; font-size: 14px; }
+footer { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 14px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+a { color: var(--accent-text); font-weight: 700; }
+
+.ex { margin-top: 10px; }
+.ex > summary { cursor: pointer; font: 700 14px/1.3 var(--f-display); color: var(--accent-text); list-style: none; padding: 6px 0; display: inline-flex; gap: 8px; align-items: center; }
+.ex > summary::-webkit-details-marker { display: none; }
+.ex > summary::before { content: "+"; display: inline-block; width: 20px; text-align: center; border: 1px solid var(--accent-text); border-radius: 50%; line-height: 18px; }
+.ex[open] > summary::before { content: "–"; }
+.xl { display: grid; gap: 10px; margin-top: 8px; }
+.xi { padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
+.xi b { font: 800 15px/1.3 var(--f-display); display: block; }
+.xi .xs { font-size: 14px; line-height: 1.45; margin-top: 4px; }
+.xi .xs span { font: 700 12px/1.4 var(--f-display); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; display: block; margin-top: 6px; }
+.xi .xn { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.xi .xw { font-size: 13px; color: var(--warn-ink); margin-top: 6px; }
+.xi a.vid { display: inline-block; margin-top: 8px; }
+.xi video { width: 100%; margin-top: 8px; border-radius: 10px; }
+@media (max-width: 440px) { .mod { grid-template-columns: 1fr 140px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><span class="mark">ESS</span></div>
+  <header class="hero">
+    <div class="eyebrow">Trips resident · планирование</div>
+    <h1>Планировщик трипа</h1>
+    <p class="lede">Введи дату вылета и свои ступени по модулям. Получишь расклад по фазам до трипа: сколько недель на базу, сколько на заострение и когда сбрасывать объём. Бесплатно. Данные остаются на твоём устройстве.</p>
+  </header>
+
+  <p class="err" id="errbox" hidden></p>
+  <p class="nojs">Для расчёта нужен включённый JavaScript. Ниже описано, из каких фаз состоит подготовка к трипу.</p>
+
+  <div class="app">
+    <section class="step">
+      <div class="step-head"><span class="n">1</span><h2>Дата вылета</h2></div>
+      <div class="field">
+        <label for="trip">Когда ты летишь</label>
+        <input class="inp" type="date" id="trip">
+      </div>
+      <span class="badge" id="wk" hidden></span>
+    </section>
+
+    <section class="step">
+      <div class="step-head"><span class="n">2</span><h2>Твои ступени сейчас</h2></div>
+      <p class="hint">Ступень по модулю определяется критериями перехода внутри самого модуля. Если модуль ещё не открыт, оставь «не открыт».</p>
+      <div class="mods" id="mods"></div>
+    </section>
+
+    <section class="step">
+      <div class="step-head"><span class="n">3</span><h2>Surf-Ready Score</h2></div>
+      <p class="hint">Не обязательно, но помогает решить, не торопишься ли ты с переходом к заострению. Тест проходится бесплатно, <a href="https://alexeyt-3-web.github.io/surf-ready-score/" target="_blank" rel="noopener">пройти SRS</a>.</p>
+      <div class="row2">
+        <div class="field"><label for="srs1">SRS сейчас</label><input class="inp" id="srs1" type="number" inputmode="decimal" min="0" max="10" step="0.1" placeholder="0–10"></div>
+        <div class="field"><label for="srs0">SRS в прошлый раз</label><input class="inp" id="srs0" type="number" inputmode="decimal" min="0" max="10" step="0.1" placeholder="0–10"></div>
+      </div>
+    </section>
+
+    <section class="res" id="res" hidden aria-live="polite"></section>
+  </div>
+
+  <section class="legend">
+    <h2>Из чего состоит подготовка</h2>
+    <div class="lg">
+      <div><b>Building Swell</b>Трип появился на горизонте. Закладываем фундамент: гребля и физподготовка выходят на полный объём. Обычно 4–8 недель.</div>
+      <div><b>Peak Set</b>Фундамент есть, теперь заостряем. Тейк-оф и баланс выходят на максимум, взрывная работа в приоритете. Обычно 2–3 недели.</div>
+      <div><b>Glass Off</b>Сбрасываем объём, острота остаётся. Последние 8–14 дней перед вылетом, чтобы прилететь свежим, а не разбитым.</div>
+    </div>
+  </section>
+
+  <footer>
+    Eat-Sleep-Surf · Trips resident · Планировщик трипа, версия 0.1. Рабочая версия: логика из таблицы сборки программы, дозировки не финальные. Это ориентир, а не расписание на единственно верный день. Не заменяет врача.
+  </footer>
+</div>
+
+<script>
+(function () {
+document.documentElement.className += " js";
+var REF = [["М1", "R2", "Все 7 блоков (Rib Stack Hold, Bird Dog, Rib Stack Extension, Rib Stack Arch Entry, Rib Stack Raises, Rib Stack Row, Pallof press, асимметричный присед, ротация, PAILs/RAILs, Surf-Burpee) - входная дозировка. Точные цифры - модуль-1-упражнения-наполнение.pdf"], ["М1", "R1", "Те же блоки - полный диапазон, средний эспандер, без компенсаций"], ["М1", "Base", "Те же блоки - тяжелее эспандер, взгляд/разворот появляется в подготовке к М3"], ["М1", "P1", "Те же блоки - тяжёлый эспандер, эксцентрическая лесенка в приседе, пауза в пике Raises/Row"], ["М1", "P2", "Rib Stack Hold - тест на удержание НПГ в утомлении, сразу после блока 6, без отдыха. Остальные блоки М1 своей P2-ступени не имеют - держатся на P1. Это чек-пойнт готовности к Peak Set, не полноценная тренировочная ступень для всего модуля"], ["М2", "R2", "Rib Stack Catch - техника входа весла, малый объём. Точные цифры - модуль-2-упражнения-наполнение.pdf"], ["М2", "R1", "Rib Stack Pull + Catch - базовая техника, объём растёт"], ["М2", "Base", "Rib Stack Pull + Catch + Endurance - полный объём, все три семейства"], ["М2", "P1", "Rib Stack Pull: сценарии Out Set и погоня за волной. Endurance: крейсер (кондиционный акцент)"], ["М3 (лонгборд)", "R2", "Rib Stack Push-up (общий) + Rib Stack Arch - разбитый на счёт паттерн выхода в прогиб"], ["М3 (лонгборд)", "R1", "Rib Stack Arch продолжается + Longboard Rise вводится - контролируемый скользящий подъём"], ["М3 (лонгборд)", "Base", "Longboard Rise - слитное движение без пауз, взгляд/разворот до подъёма, полная скорость"], ["М3 (лонгборд)", "P1", "Angle take-off на лонгборде - вариативный угол под направление волны. Открывает доступ к шортборд-ветке"], ["М3 (лонгборд)", "P2", "Rib Stack Arch - взрывной front step с загрузкой рейла и разворотом головы, максимально близко к angle take-off. Longboard Rise (основная техническая прогрессия) своей P2-ступени не имеет - держится на P1"], ["М3 (шортборд)", "R2", "Rib Stack Push-up (общий) + Rib Stack Tuck - взрывной прогиб, тейк-оф с промежуточным коленом"], ["М3 (шортборд)", "R1", "Rib Stack Tuck продолжается + Shortboard Pop-up - без колена, узкая стойка"], ["М3 (шортборд)", "Base", "Shortboard Pop-up - полная скорость, взгляд/разворот до подъёма, активное давление передней ногой"], ["М3 (шортборд)", "P1", "Angle take-off на шортборде - подъём с ротацией под направление волны"], ["М3 (шортборд)", "P2", "Rib Stack Tuck - приземление на одну ногу поочерёдно, последний шаг перед полноценным pop-up. Shortboard Pop-up (основная техническая прогрессия) своей P2-ступени не имеет - держится на P1"], ["М4", "R2", "Семейство 1 (PBT): вращения руками на одной ноге. Семейство 2: статика асимметричной стойки. Твёрдая земля"], ["М4", "R1", "Семейство 1: мячи соло. Семейство 2: tail/nose смещение + мячи. Твёрдая земля"], ["М4", "Base", "Семейство 1: стена/партнёр. Семейство 2: подушка под стойкой + мячи"], ["М4", "P1", "Семейство 1: подсед-ловля/партнёрский PBT. Семейство 2: полотенце + мячи, либо валик"], ["М4", "P2", "Семейство 1: настоящий PBT (партнёр/эспандер, непредсказуемо). Семейство 2: валик + мячи - пик семейства"]];
+var PH = [["Поддерживающий", "М1", "Фон", 1.0, "Базовый темп весь год, без акцента"], ["Поддерживающий", "М2", "Фон", 1.0, "Базовый темп весь год, без акцента"], ["Поддерживающий", "М3 (лонгборд)", "Фон", 1.0, "Базовый темп весь год, без акцента"], ["Поддерживающий", "М3 (шортборд)", "Фон", 1.0, "Базовый темп весь год, без акцента"], ["Поддерживающий", "М4", "Фон", 1.0, "Базовый темп весь год, без акцента"], ["Building Swell", "М1", "В фокусе", 1.0, "Полный объём - кондиция и база под нагрузку гребли"], ["Building Swell", "М2", "В фокусе", 1.0, "Полный объём - кондиция и база под нагрузку гребли"], ["Building Swell", "М3 (лонгборд)", "Фон", 0.7, "Поддерживающий темп, не приоритет фазы"], ["Building Swell", "М3 (шортборд)", "Фон", 0.7, "Поддерживающий темп, не приоритет фазы"], ["Building Swell", "М4", "Фон", 0.7, "Поддерживающий темп, не приоритет фазы"], ["Peak Set", "М1", "Фон", 0.8, "Поддерживающий темп, база уже заложена"], ["Peak Set", "М2", "Фон", 0.8, "Поддерживающий темп, база уже заложена"], ["Peak Set", "М3 (лонгборд)", "В фокусе", 1.0, "Полный объём, темп взрывной (см. P1/Base дозировку)"], ["Peak Set", "М3 (шортборд)", "В фокусе", 1.0, "Полный объём, темп взрывной (см. P1/Base дозировку)"], ["Peak Set", "М4", "В фокусе", 1.0, "Полный объём, темп взрывной (см. P1/Base дозировку)"], ["Glass Off", "М1", "Фон", 0.5, "Тейпер: тот же уровень, объём вниз на 41-60% (Bosquet)"], ["Glass Off", "М2", "Фон", 0.5, "Тейпер: тот же уровень, объём вниз на 41-60% (Bosquet)"], ["Glass Off", "М3 (лонгборд)", "Фон", 0.5, "Тейпер: тот же уровень, объём вниз, интенсивность сохраняется"], ["Glass Off", "М3 (шортборд)", "Фон", 0.5, "Тейпер: тот же уровень, объём вниз, интенсивность сохраняется"], ["Glass Off", "М4", "Фон", 0.5, "Тейпер: тот же уровень, объём вниз, интенсивность сохраняется"]];
+var LIB_URL = "../library/";
+var EX = [{"id": "m1-hold", "modules": ["М1"], "section": "М1", "block": "Trim Lock", "name": "Rib Stack Hold", "intro": "Держим положение грудной клетки (Rib Stack). Все четыре семейства Trim Lock тренируют один паттерн через разные входы. Берёшь 1–2 семейства на сессию и меняешь их каждую сессию.", "levels": {"R2": {"dose": "3×10-15 сек, отдых 30 сек", "how": "Свободное дыхание", "crit": "15 сек без потери Rib Stack → R1"}, "R1": {"dose": "3×20-30 сек, отдых 30-40 сек", "how": "Вдох перед стартом, ровное дыхание", "crit": "30 сек стабильно 2 сессии → Base"}, "Base": {"dose": "3×30-40 сек + поочерёдное вытяжение рук 4-6/рука, отдых 40-45 сек", "how": "Выдох на вытяжении", "crit": "Вытяжение без потери НПГ → P1"}, "P1": {"dose": "3×30 сек с эспандером в руках, отдых 45 сек", "how": "Выдох на вытяжении", "crit": "НПГ держится под сопротивлением"}, "P2": {"dose": "20 сек сразу после блока 6, без отдыха (тест)", "how": "Дыхание сбито, это и есть тест", "crit": "НПГ держится в утомлении → можно в Peak Set"}}, "note": "", "video": null, "optional": false}, {"id": "m1-birddog", "modules": ["М1"], "section": "М1", "block": "Trim Lock", "name": "Bird Dog", "intro": "Заменяет «Лодочку»: тот же слот (антиротационная выносливость, задняя цепь), ниже технический порог дома, меньше нагрузка на поясницу, потому что вес на четырёх точках.", "levels": {"R2": {"dose": "2×6/сторону, удержание 3-5 сек, отдых 30 сек", "how": "Только рука ИЛИ только нога", "crit": "Таз не разворачивается → R1"}, "R1": {"dose": "2×6-8/сторону, удержание 5 сек", "how": "Рука + противоположная нога, медленно", "crit": "Таз стабилен 2 сессии → Base"}, "Base": {"dose": "3×8-10/сторону, удержание 8-10 сек", "how": "То же, дольше в вытяжении", "crit": "Без бокового наклона таза → P1"}, "P1": {"dose": "3×8/сторону, удержание 10 сек", "how": "Лёгкий эспандер или подушка под опорным коленом", "crit": "Сопротивление без потери нейтрали → P2"}, "P2": {"dose": "3×6-8/сторону, отдых 45 сек", "how": "Пауза + лёгкое дополнительное тянущее усилие", "crit": "Готовность к асимметрии модулей 3-4"}}, "note": "Главная компенсация — наклон таза в сторону поднятой ноги. «Квадратный» таз важнее скорости прогрессии.", "video": null, "optional": false}, {"id": "m1-extension", "modules": ["М1"], "section": "М1", "block": "Trim Lock", "name": "Rib Stack Extension", "intro": "Trim Lock через разгибание плюс работа всех зон трапеции.", "levels": {"R2": {"dose": "3×8-10 циклов, отдых 30 сек", "how": "Упор на оба локтя, прогиб грудного отдела, протракция/ретракция лопаток", "crit": ""}, "R1": {"dose": "2×8-10/сторону, отдых 30-40 сек", "how": "Упор на один локоть, свободный локоть уходит назад", "crit": ""}, "Base": {"dose": "3×8-10, чередовать варианты по сессиям, отдых 40 сек", "how": "Без опоры: локти назад поочерёдно (антиротация) или одновременно (сила разгибателей, руки не отрываются)", "crit": ""}}, "note": "Подсказка для Base: поясница не отдыхает между повторами. Если в SRS у тебя флаг разгибания, это упражнение пропускаем. Ступень P1 появится по мере наработки.", "video": null, "optional": false}, {"id": "m1-arch", "modules": ["М1"], "section": "М1", "block": "Trim Lock", "name": "Rib Stack Arch Entry", "intro": "Готовит к будущим модулям. Постановка ноги на P1 — репетиция тейк-офа и мобильность ТБС, полезная и без трипа. Семейство начинается с R1.", "levels": {"R1": {"dose": "3×5-6, удержание 2-3 сек вверху, отдых 30-40 сек", "how": "С четверенек в прогиб, голени приподняты, без отжимания", "crit": ""}, "Base": {"dose": "3×6-8, отдых 40 сек", "how": "Таз к полу → сгибание рук до Rib Stack → разгибание → подъём таза", "crit": ""}, "P1": {"dose": "3×4-5/ногу, отдых 40-45 сек", "how": "То же + на пике прогиба одна нога шагает вперёд к рукам", "crit": ""}}, "note": "После уверенного Base ступень R2 в Rib Stack Arch (М3) даётся заметно легче.", "video": null, "optional": false}, {"id": "m1-raises", "modules": ["М1"], "section": "М1", "block": "Плечевой пояс и спина", "name": "Rib Stack Raises (Y/T/W)", "intro": "", "levels": {"R2": {"dose": "2×8 (только Y или T), отдых 30 сек", "how": "Выдох на подъёме", "crit": "Без компенсации шеей/поясницей → R1"}, "R1": {"dose": "2×8 на положение, отдых 30-40 сек", "how": "Пауза 1 сек вверху", "crit": "Все три без потери лопатки → Base"}, "Base": {"dose": "3×10 на положение, отдых 40 сек", "how": "Без рывка", "crit": "2 сессии чисто → P1"}, "P1": {"dose": "3×10, пауза 2 сек, отдых 40-45 сек", "how": "Без задержки дыхания", "crit": "Готовность к Rib Stack Row на этом уровне"}}, "note": "Ранний отрыв локтей в тесте Wall slide (SRS): начинай с этого семейства, перед Row.", "video": null, "optional": false}, {"id": "m1-row", "modules": ["М1"], "section": "М1", "block": "Плечевой пояс и спина", "name": "Rib Stack Row", "intro": "", "levels": {"R2": {"dose": "Изометрия, лёгкий эспандер, 2×10-15 сек", "how": "Выдох на входе", "crit": "Таз не вдавливается, колени не на полу → R1"}, "R1": {"dose": "Полный диапазон, лёгкий, 2×8-10", "how": "Выдох на тяге", "crit": "Чистый диапазон → Base"}, "Base": {"dose": "Средний, 3×10-12, отдых 40 сек", "how": "Пауза 1 сек", "crit": "2 сессии стабильно → P1"}, "P1": {"dose": "Тяжёлый, 3×8-10 + пауза 2 сек", "how": "Выдох на тяге и паузе", "crit": "Удержание под максимальной нагрузкой"}}, "note": "Единый критерий: таз не вдавливается в пол, колени не опускаются. Тяга стоя (зал) — по желанию, самостоятельно, с критерием «стоп».", "video": null, "optional": false}, {"id": "m1-pallof", "modules": ["М1"], "section": "М1", "block": "Pallof press", "name": "Pallof press", "intro": "", "levels": {"R2": {"dose": "2×6/сторону, с колен, минимальное сопротивление", "how": "Выдох на вытягивании", "crit": "Корпус без ротации → R1"}, "R1": {"dose": "2×8/сторону, стоя", "how": "Пауза 1 сек", "crit": "Стабильно обе стороны → Base"}, "Base": {"dose": "3×10/сторону + шаг в сторону", "how": "Без задержки", "crit": "2 сессии без потери нейтрали → P1"}, "P1": {"dose": "3×8/сторону + полуприсед на выставленную ногу", "how": "Синхронно с ногой", "crit": "Готовность к антиротации в движении"}}, "note": "Слабая сторона в боковом упоре (SRS): больше подходов на той же ступени, без форсированного совместного перехода.", "video": null, "optional": false}, {"id": "m1-squat", "modules": ["М1"], "section": "М1", "block": "Асимметричный изометрический присед", "name": "Асимметричный изометрический присед", "intro": "2 подхода на ведущую ногу, 1 на заднюю.", "levels": {"R2": {"dose": "По времени: 3×10-15 сек, опора о стену. По повторениям: 3×6-8 (3-1-2), опора", "how": "", "crit": "15 сек без вальгуса → R1"}, "R1": {"dose": "По времени: 3×15-20 сек без опоры. По повторениям: 3×8-10 без опоры", "how": "", "crit": "20 сек, колено не заваливается → Base"}, "Base": {"dose": "По времени: 3×25-30 сек. По повторениям: 3×10-12, пауза внизу 2 сек", "how": "", "crit": "2 сессии без компенсации → P1"}, "P1": {"dose": "Эксцентрическая лесенка: шаг назад, медленно (3 сек) в асимметричный присед, вес на передней ноге. 3-4 повтора на ведущую, 2 на заднюю", "how": "", "crit": "Готовность к взрывной фазе тейк-офа"}}, "note": "Если в SRS (приседания 45 секунд) колено уходит внутрь, ступень не ускоряем, независимо от готовности в остальных блоках.", "video": null, "optional": false}, {"id": "m1-rotation", "modules": ["М1"], "section": "М1", "block": "Ротация грудной клетки относительно таза", "name": "Ротация грудной клетки относительно таза", "intro": "", "levels": {"R2": {"dose": "3×8/сторону, лёгкий эспандер, медленно", "how": "Выдох на повороте", "crit": "Без движения таза → R1"}, "R1": {"dose": "3×10/сторону, лёгкий", "how": "Выдох на повороте", "crit": "2 сессии стабильно → Base"}, "Base": {"dose": "3×10-12/сторону, умеренный", "how": "Быстро наружу, медленно обратно", "crit": "Управляемая асимметрия → P1"}, "P1": {"dose": "3×12-15/сторону, тяжёлый", "how": "Быстро наружу, медленно обратно", "crit": "Готовность к angle take-off"}}, "note": "Медбол в стену (зал): когда P1 на эспандере выполняется технично.", "video": null, "optional": false}, {"id": "m1-pails", "modules": ["М1"], "section": "М1", "block": "Мобильность ТБС", "name": "Мобильность ТБС (PAILs/RAILs)", "intro": "", "levels": {"R2": {"dose": "Пассивно 90/90, 2×20-30 сек/сторону", "how": "Свободно", "crit": "Комфортно → R1"}, "R1": {"dose": "PAILs: изометрия 5-10 сек в конце амплитуды", "how": "Выдох в изометрии", "crit": "Без дрожи → Base"}, "Base": {"dose": "PAILs → RAILs 10/10 сек, 2-3 цикла", "how": "Выдох на каждой фазе", "crit": "Рост амплитуды за 2 сессии → P1"}, "P1": {"dose": "То же, изометрия 15 сек", "how": "Выдох на каждой фазе", "crit": "Амплитуда переносится в динамику"}}, "note": "Не форсируй растяжку. У тебя своя амплитуда, она меняется медленнее, чем сила. Для плеч та же логика.", "video": null, "optional": false}, {"id": "m1-burpee", "modules": ["М1"], "section": "М1", "block": "Surf-Burpee", "name": "Surf-Burpee", "intro": "Стоя → присед, руки на пол → ноги назад в позицию гребли → взрывной выход ногой вперёд (чередуя) → стойка → прыжок. Техника тейк-офа не оценивается, следим только за Rib Stack в позиции гребли.", "levels": {"R2": {"dose": "3 раунда × 30 сек, отдых 20-40 сек", "how": "Без прыжков", "crit": "Все раунды без одышки → R1"}, "R1": {"dose": "4 × 30 сек", "how": "Взрывной выход + прыжок", "crit": "Стабильный темп → Base"}, "Base": {"dose": "4-5 × 40 сек", "how": "Полная механика", "crit": "Rib Stack держится до конца → P1"}, "P1": {"dose": "5-6 × 40 сек, быстрее", "how": "Полная механика", "crit": "Готовность к Peak Set"}}, "note": "Rib Stack проваливается уже на 3-м раунде Base: не добавляй раунды, а проверь восстановление (Eat-Sleep-Surf).", "video": null, "optional": false}, {"id": "m2-pull", "modules": ["М2"], "section": "М2", "block": "Гребля", "name": "Rib Stack Paddle · Pull", "intro": "Пропульсия. Руки работают поочерёдно (в отличие от Rib Stack Row, где тяга одновременная), это имитация реального гребка. Целевые мышцы: широчайшая и трицепс.", "levels": {"R2": {"dose": "Частичная амплитуда, без сопротивления, 3x20-30 сек, отдых 30 сек", "how": "Свободное дыхание, приоритет — держать Rib Stack", "crit": "Держит Rib Stack на всей амплитуде без сопротивления → R1"}, "R1": {"dose": "Лёгкий эспандер, умеренная амплитуда, 3x20-30 сек, отдых 30-40 сек", "how": "Дыхание синхронизировано с темпом гребка", "crit": "Стабильный ритм дыхания, Rib Stack держится → Base"}, "Base": {"dose": "Лёгкий-средний эспандер, полный паттерн, 3x30-40 сек, отдых 40 сек", "how": "Темп ровный: техника, не скорость", "crit": "2 сессии без проваливания Rib Stack во второй половине подхода → P1"}, "P1": {"dose": "Два сценария. Выход за линию прибоя / Out Set: тяжёлый эспандер, 4x15-20 сек взрывных серий, отдых 40-45 сек. Погоня за волной: средне-тяжёлый эспандер, 4x10-15 сек спринтов, отдых 30-35 сек", "how": "Out Set: максимальная скорость и амплитуда, короткие мощные вспышки. Погоня за волной: резкий быстрый темп; за 2 сек до конца интервала 3 максимально мощных гребка (имитация финального рывка на поимку волны)", "crit": ""}}, "note": "Вариант для ротации (только Base/P1), Pull Standing: стоя в наклоне, эспандер закреплён выше уровня головы (дверная петля/турник), прямая рука тянет по дуге сверху вниз к бедру. Та же дозировка. Вводится как дополнение, ротация с основным вариантом каждые 4-6 недель. На R2/R1 не используется. Фазу Recovery этого же гребка уже тренирует Rib Stack Raises из М1.", "video": null, "optional": false}, {"id": "m2-catch", "modules": ["М2"], "section": "М2", "block": "Гребля", "name": "Rib Stack Paddle · Catch", "intro": "Изолирует момент входа руки в воду и начало захвата, до полной тяги. Положение прону на лавке или другом возвышении (не на полу). Старт: Rib Stack, обе руки вытянуты вперёд. Одна рука за раз выполняет захват (около 20-30% полной дуги, кисть входит под небольшим углом вниз, на линии плеча), вторая остаётся вытянутой, удерживая Rib Stack.", "levels": {"R2": {"dose": "Без сопротивления, только позиционирование входа + микро-инициация тяги, 2x8/рука, отдых 30 сек", "how": "Фокус на угол входа кисти, не на скорость", "crit": "Чистый угол входа на обе руки → R1"}, "R1": {"dose": "Лёгкий эспандер, та же микро-амплитуда, 2x10/рука, отдых 30 сек", "how": "Выдох в момент захвата (начало тяги)", "crit": "Стабильное включение широчайшей сразу на входе → Base"}, "Base": {"dose": "Лёгкий-средний эспандер, амплитуда захвата около 30% от полной, 3x10/рука, отдых 35 сек", "how": "Выдох в момент захвата (начало тяги)", "crit": "2 сессии без потери угла входа под утомлением → P1"}, "P1": {"dose": "То же + ускоренный темп входа руки (тайминг под высокий stroke rate), 3x10/рука, отдых 35-40 сек", "how": "Дыхание в такт ускоренному темпу", "crit": "Готовность интегрировать точный вход в полный Pull на скорости"}}, "note": "Зачем отдельно: неправильный угол входа руки снижает пропульсивную дистанцию гребка независимо от силы тяги. Вариант для ротации (только Base/P1), Catch Standing: та же стойка, что в Pull Standing, рука намеренно подсогнута в локте, амплитуда ограничена верхней частью дуги. На R2/R1 только вариант на лавке.", "video": null, "optional": false}, {"id": "m2-endurance", "modules": ["М2"], "section": "М2", "block": "Гребля", "name": "Rib Stack Paddle · Endurance", "intro": "Тот же паттерн, что в Pull, но дозирован для субмаксимальной непрерывной ёмкости, а не для силы. Физиологически другая нагрузка, а не просто «то же самое дольше».", "levels": {"R2": {"dose": "Без сопротивления или лёгкий эспандер, непрерывно 45-60 сек, отдых 45 сек", "how": "Ровное дыхание, приоритет — непрерывность движения", "crit": "Проходит без остановки → R1"}, "R1": {"dose": "Лёгкий эспандер, непрерывно 60-90 сек, отдых 45 сек", "how": "Стабильный дыхательный ритм", "crit": "Держит ритм без сбоя дыхания → Base"}, "Base": {"dose": "Лёгкий эспандер, непрерывно 90-120 сек, отдых 45-60 сек", "how": "Стабильный дыхательный ритм", "crit": "2 сессии без потери Rib Stack к концу подхода → P1"}, "P1": {"dose": "Крейсерская гребля: лёгко-средний эспандер, 3x60-90 сек, отдых 45-60 сек", "how": "Ровный экономичный темп, дыхательный ритм в приоритете", "crit": "Готовность к фазе Building Swell"}}, "note": "Крейсерский сценарий венчает именно эту лесенку: он ближе к выносливостному профилю, чем к спринтерским сценариям Pull.", "video": null, "optional": false}, {"id": "m3-pushup", "modules": ["М3 (лонгборд)", "М3 (шортборд)"], "section": "М3", "block": "Общая фаза (обе доски)", "name": "Rib Stack Push-up", "intro": "Переход из позиции гребли в упор руками с завершающим прогибом без поворота. Постановка рук 45-50 см, симметричная нагрузка на обе руки, Rib Stack удерживается весь упор. Поворот в сторону волны здесь не добавляется.", "levels": {"R2": {"dose": "3x5 повт., частичный диапазон, медленно, отдых 30 сек", "how": "", "crit": "Rib Stack не проваливается на медленном темпе → R1"}, "R1": {"dose": "3x5 повт., полный диапазон + прогиб без поворота, отдых 30-40 сек", "how": "", "crit": "Полный диапазон без потери Rib Stack → Base"}, "Base": {"dose": "4x5 повт. + 3-5 имитационных гребков перед подходом, отдых 40 сек", "how": "", "crit": "2 сессии стабильно на скорости, близкой к реальной → P1"}, "P1": {"dose": "4x5 повт. + 3-5 имитационных гребков, полная скорость, отдых 40-45 сек", "how": "", "crit": "Rib Stack держится на полной скорости → готовность к следующим семействам"}}, "note": "Все клиенты начинают с лонгборд-ветки: это обязательная база, а не выбор. Шортборд-ветка открывается после уверенного P1 в Longboard Rise.", "video": null, "optional": false}, {"id": "m3-arch", "modules": ["М3 (лонгборд)"], "section": "М3", "block": "Лонгборд: обязательная база", "name": "Rib Stack Arch", "intro": "Выход из Rib Stack в положение прогиба с загрузкой рейла в сторону волны. Развивает грудные мышцы, руки, контроль Rib Stack при выходе в прогиб и мобильность под angle take-off на лонгборде.", "levels": {"R2": {"dose": "3x5-6 повт., отдых 40 сек, контролируемый (2-3 сек в прогиб)", "how": "Выход из Rib Stack в прогиб, взгляд/разворот корпуса в сторону волны, загрузка рейла", "crit": ""}, "R1": {"dose": "3x5-6 повт., отдых 40-45 сек, контролируемый", "how": "То же + подтягивание ноги с полной постановкой стопы", "crit": ""}, "Base": {"dose": "3x5-6 повт., отдых 45 сек, чуть медленнее (баланс без опоры стопой)", "how": "То же, нога тянется к локтю, стопа остаётся навесу", "crit": ""}, "P1": {"dose": "4x4-5 повт. + 3-5 имитационных гребков, отдых 45-50 сек, взрывной", "how": "Более быстрый прогиб + взрывной выход в front step (Animal Flow)", "crit": ""}, "P2": {"dose": "4x3-4 повт. + 3-5 имитационных гребков, отдых 50-60 сек, полная скорость", "how": "Взрывной front step с загрузкой рейла и разворотом головы, максимально близко к angle take-off на лонгборде", "crit": ""}}, "note": "Предупреждение, не запрет: если нет уверенного контроля ротации из М1 (ротация грудной клетки), начни с базового варианта этой ступени. Угол ротации при недостаточном контроле повышает риск компенсации через поясницу. Взгляд и разворот корпуса в сторону волны выполняются до подъёма, а не после.", "video": null, "optional": false}, {"id": "m3-rise", "modules": ["М3 (лонгборд)"], "section": "М3", "block": "Лонгборд: обязательная база", "name": "Longboard Rise", "intro": "Из положения Push-up: контролируемый скользящий подъём, ротационный контроль корпуса вместо компенсации руками. Сразу после подъёма давление уходит на переднюю ногу, а ведущая рука (одноимённая передней ноге) тянется вперёд.", "levels": {"R2": {"dose": "3x4 повт., отдых 45 сек", "how": "Разбито на 3-4 счётные точки с паузами, медленно", "crit": "Чистое прохождение всех точек → R1"}, "R1": {"dose": "3x4 повт., отдых 45-60 сек", "how": "Те же точки, короче паузы, более плавно", "crit": "Сокращение пауз без потери контроля → Base"}, "Base": {"dose": "4x4 повт. + 3-5 гребков перед каждым, отдых 60 сек", "how": "Слитное движение, широкая стойка, взгляд/разворот к волне до подъёма, давление на переднюю ногу + вытяжение одноимённой руки", "crit": "2 сессии слитно, без компенсации руками → P1"}, "P1": {"dose": "4x3 повт./сторону + 3-5 гребков, отдых 60-75 сек", "how": "Angle take-off: тот же принцип ротации, что на шортборде", "crit": "Готовность к фазе Peak Set"}}, "note": "Предупреждение, не запрет: если нет уверенного контроля ротации из М1 (ротация грудной клетки), начни с базового варианта этой ступени. Угол ротации при недостаточном контроле повышает риск компенсации через поясницу. Если подъём идёт преимущественно за счёт упора руками (руки отрываются от доски позже, движение резче), кор ещё не готов к Base, задержись на R1. Уверенный P1 здесь открывает шортборд-ветку, но переходить сразу не обязательно: ветка самодостаточна для тех, чья цель только лонгборд.", "video": null, "optional": false}, {"id": "m3-tuck", "modules": ["М3 (шортборд)"], "section": "М3", "block": "Шортборд: продвинутая ступень", "name": "Rib Stack Tuck", "intro": "Взрывной прогиб с подтягиванием коленей: от скольжения по полу до полноценного прыжкового элемента. В отличие от Rib Stack Arch (мобильность), здесь с первой ступени акцент на взрывное движение, под характер шортборд-тейк-офа.", "levels": {"R2": {"dose": "3x8-10 повт., отдых 40 сек, взрывной (простая механика)", "how": "Взрывной прогиб со скольжением коленей по полу к линии пупка, голени навесу", "crit": ""}, "R1": {"dose": "3x8-10 повт., отдых 40-45 сек, взрывной", "how": "Колени отрываются от пола (не скользят), быстрое подтягивание к пупку, скольжение на носках", "crit": ""}, "Base": {"dose": "4x10 повт., отдых 45 сек, взрывной", "how": "Полный прыжковый элемент: толчок и приземление на две ноги, старт с носков", "crit": ""}, "P1": {"dose": "4x8 повт. + 3-5 имитационных гребков, отдых 45-50 сек, максимально взрывной", "how": "Голени отрываются сразу (без старта на носках), приземление на две ноги, руки ещё на полу", "crit": ""}, "P2": {"dose": "4x5 повт./ногу + 3-5 имитационных гребков, отдых 50-60 сек, максимально взрывной", "how": "Приземление на одну ногу поочерёдно: последний шаг перед полноценным pop-up на шортборде", "crit": ""}}, "note": "", "video": null, "optional": false}, {"id": "m3-popup", "modules": ["М3 (шортборд)"], "section": "М3", "block": "Шортборд: продвинутая ступень", "name": "Shortboard Pop-up", "intro": "Из положения Push-up: взрывной подъём в стойку. На Base и P1 перед каждым повторением 3-5 имитационных гребков (Rib Stack Paddle Pull из М2), на R2/R1 без гребков: чистое обучение паттерну.", "levels": {"R2": {"dose": "3x5 повт., отдых 45 сек", "how": "Промежуточное колено на пути к стойке, медленный контролируемый темп", "crit": "Чистая техника с коленом на всех 5 повт. → R1"}, "R1": {"dose": "3x5 повт., отдых 45-60 сек", "how": "Без колена, взрывной выход, узкая стойка", "crit": "Стабильно без колена, приземление в стойку → Base"}, "Base": {"dose": "4x4 повт. + 3-5 гребков перед каждым, отдых 60 сек", "how": "Полная скорость, взгляд/разворот к волне до подъёма, активное давление передней ногой сразу на приземлении", "crit": "2 сессии на полной скорости без потери формы → P1"}, "P1": {"dose": "4x3 повт./сторону + 3-5 гребков, отдых 60-75 сек", "how": "Angle take-off: подъём с ротацией под направление волны", "crit": "Готовность к фазе Peak Set"}}, "note": "Предупреждение, не запрет: если нет уверенного контроля ротации из М1 (ротация грудной клетки), начни с базового варианта этой ступени. Угол ротации при недостаточном контроле повышает риск компенсации через поясницу. Критерий приземления: не «устоял», а активное давление передней ногой в доску сразу на приземлении. Взгляд и разворот корпуса в сторону волны выполняются до подъёма, а не после.", "video": null, "optional": false}, {"id": "m4-pbt", "modules": ["М4"], "section": "М4", "block": "Баланс и реактивность", "name": "PBT: реактивный баланс", "intro": "Реактивный баланс тренируется непредсказуемыми толчками, а не удержанием позы. На одной ноге на каждой ступени R2-P1 три суб-шага по нестабильности опоры: твёрдая земля → подушка → одно скрученное полотенце.", "levels": {"R2": {"dose": "2x20-30 сек/нога на упражнение, твёрдая → подушка → одно полотенце, отдых 30 сек", "how": "Одна нога: (а) вращение руками, (б) вращение рука+корпус+голова синхронно, (в) поочерёдное касание пола руками", "crit": ""}, "R1": {"dose": "2-3x10-12 повт./нога, твёрдая → подушка → одно полотенце, отдых 30-40 сек", "how": "Одна нога, теннисные мячи: (а) удар об пол и ловля поочерёдно, (б) подброс-ловля поочерёдно, (в) подброс одной/удар другой", "crit": ""}, "Base": {"dose": "3x10-15 повт./нога, твёрдая → подушка → одно полотенце, отдых 35-40 сек", "how": "Одна нога, мяч в стену/с партнёром: (а) удар в стену поочерёдно, (б) удар через пол в стену, (в) комбинация между руками", "crit": ""}, "P1": {"dose": "3x8-10 повт./нога, твёрдая → подушка → одно полотенце, отдых 40-45 сек", "how": "Extra: мячи на уровне груди ладонями вниз, отпускаем и ловим через быстрый подсед. Партнёрский вариант: партнёр стоит лицом и отпускает мяч(и), клиент реагирует и ловит", "crit": ""}, "P2": {"dose": "2x5 толчков/нога (nudge/эспандер) или 2x8-10 перебросов/нога, отдых 45-60 сек между подходами", "how": "Настоящий PBT: партнёр делает непредсказуемый nudge/towel-pull в разных направлениях. Соло-замена: эспандер, самостоятельный непредсказуемый рывок. Дополнительно: перебрасывание мячей с партнёром", "crit": ""}}, "note": "Реактивность страдает первой при утомлении: блок P2 (непредсказуемые толчки) не растягивай до предела в конце сессии.", "video": null, "optional": false}, {"id": "m4-stance", "modules": ["М4"], "section": "М4", "block": "Баланс и реактивность", "name": "Полная стойка + Tail/Nose", "intro": "Двуногая асимметричная стойка и смещение веса внутри неё. Ведущая нога даёт основной объём, неведущая меньший. Мячи с первой ступени: стоять или смещаться без задачи для рук неэффективно.", "levels": {"R2": {"dose": "3x20-30 сек (ведущая), 3x15-20 сек (неведущая), отдых 30 сек", "how": "Статичное удержание асимметричной стойки + подбрасывание мячей (руки работают независимо от стойки), твёрдая земля", "crit": ""}, "R1": {"dose": "3x8-10 циклов (ведущая), 3x6-8 (неведущая), отдых 30-40 сек", "how": "Контролируемое смещение веса tail/nose + подбрасывание мячей во время смещения, твёрдая земля", "crit": ""}, "Base": {"dose": "4x8-10 циклов (ведущая), 4x6-8 (неведущая), отдых 35-40 сек", "how": "То же смещение + мячи, теперь на подушке под стойкой", "crit": ""}, "P1": {"dose": "4x8 циклов, отдых 40-45 сек", "how": "Tail/nose смещение + мячи на двух скрученных полотенцах. Альтернатива: то же на подушке + партнёр/стена с мячом (удар или переброс) вместо усложнения опоры", "crit": ""}, "P2": {"dose": "3x20-30 сек удержания с работой мячей, отдых 45-50 сек", "how": "Валик (свободное качение) + мячи: пик семейства, непрерывная нестабильность", "crit": ""}}, "note": "Иерархия нестабильности опоры: твёрдая земля → подушка → полотенце (на одной ноге одно скрученное, два только для двуногой позиции) → валик.", "video": null, "optional": false}, {"id": "m4-slack", "modules": ["М4"], "section": "М4", "block": "Опционально", "name": "Slackline", "intro": "Вариативное семейство, не основной путь: ограниченная доступность дома. Даёт постоянную мелкую непредсказуемую нестабильность. Вводится как альтернатива или дополнение на Base-P1 для тех, у кого есть слэклайн. Не заменяет семейства PBT и стойки.", "levels": {"Base": {"dose": "Дозировка пока не задана", "how": "Базовое удержание одноногой стойки на линии; nose-to-tail смещения на линии (прямой аналог стойки Tail/Nose, но на постоянно нестабильной опоре); варьируемые стойки, приседания на линии с балансировкой", "crit": ""}, "P1": {"dose": "Дозировка пока не задана", "how": "То же, сложнее: nose-to-tail смещения, варьируемые стойки, приседания на линии", "crit": ""}}, "note": "", "video": null, "optional": true}, {"id": "m4-board", "modules": ["М4"], "section": "М4", "block": "Опционально", "name": "Балансборд", "intro": "Зеркало семейства PBT: та же лестница, но на балансборде вместо земли, подушки и полотенец. Полностью опциональна, не влияет на прохождение модуля без неё.", "levels": {"R2": {"dose": "3x15-20 сек/нога на упражнение, отдых 30 сек", "how": "Только вращения: руками / рука+корпус+голова синхронно, на балансборде. Касание пола исключено", "crit": ""}, "R1": {"dose": "2-3x8-10 повт./нога, отдых 35-40 сек", "how": "Только подброс-ловля мячей на балансборде", "crit": ""}, "Base": {"dose": "2-3x8-10 повт./нога, отдых 35-40 сек", "how": "Мячи в стену/с партнёром на балансборде", "crit": ""}, "P1": {"dose": "2-3x6-8 повт./нога, отдых 40-45 сек", "how": "Extra: подсед-ловля мячей на уровне груди на балансборде. Перед ловлей можно выполнять простое приседание без мяча как облегчённый вход", "crit": ""}, "P2": {"dose": "2x4-5 попыток/нога, отдых 45-60 сек", "how": "Балансборд + непредсказуемый партнёрский элемент (толчок/переброс)", "crit": ""}}, "note": "Дозировка черновая: объёмы снижены относительно PBT, потому что сама опора добавляет сложность. Требует проверки на практике.", "video": null, "optional": true}];
+/*PURE*/
+var IDX = { "R2": 0, "R1": 1, "Base": 2, "P1": 3, "P2": 4 };
+var STEPS = ["R2", "R1", "Base", "P1", "P2"];
+function ix(s) { return IDX.hasOwnProperty(s) ? IDX[s] : null; }
+function band(avg) { return avg <= 1 ? 0 : avg <= 2 ? 1 : avg <= 3 ? 2 : 3; }
+var BS_WEEKS = [8, 6.5, 4.5, 2.5];
+var BS_TEXT = ["~8 недель", "~6-7 недель", "~4-5 недель (стандарт)", "~2-3 недели"];
+function r1(x) { return Math.round(x * 10) / 10; }
+
+/* Building Swell по М1 + М2 (ячейки B24 и C24 таблицы) */
+function buildingSwell(m1, m2) {
+  var a = ix(m1), b = ix(m2);
+  if (a === null && b === null) return { weeks: null, text: "начни с М1" };
+  if (a !== null && b !== null) { var k = band((a + b) / 2); return { weeks: BS_WEEKS[k], text: BS_TEXT[k] }; }
+  var one = a !== null ? a : b, note = a !== null ? " (оценка по М1, М2 ещё не открыт)" : " (оценка по М2, М1 не заполнен)";
+  var k2 = band(one);
+  return { weeks: BS_WEEKS[k2], text: BS_TEXT[k2].replace(" (стандарт)", "") + note };
+}
+
+/* Peak Set по М3 (лонгборд / шортборд) + М4 (ячейка B25) */
+function peakSet(m3l, m3s, m4) {
+  var l = ix(m3l), s = ix(m3s), f = ix(m4);
+  if (l === null && s === null && f === null) return "ещё рано - М3/М4 не открыты";
+  var has3 = l !== null || s !== null;
+  var m3 = Math.max(l === null ? -1 : l, s === null ? -1 : s);
+  if (has3 && f !== null) {
+    var avg = (m3 + f) / 2;
+    return avg <= 1 ? "С коленом/без плиометрики - риски модуля 0 ещё не закрыты"
+      : avg <= 2 ? "Безколенный, умеренная взрывная работа, короче обычного"
+      : avg <= 3 ? "Полноценный, стандартная длительность (2-3 недели)"
+      : "Максимальная нагрузка, может длиться дольше";
+  }
+  if (has3) {
+    return m3 <= 1 ? "С коленом (оценка по М3, М4 ещё не открыт)"
+      : m3 <= 2 ? "Безколенный, умеренно (оценка по М3, М4 ещё не открыт)"
+      : m3 <= 3 ? "Полноценный (оценка по М3, М4 ещё не открыт)"
+      : "Максимальная нагрузка (оценка по М3, М4 ещё не открыт)";
+  }
+  return f <= 1 ? "Осторожно (оценка по М4, М3 не заполнен)"
+    : f <= 2 ? "Умеренно (оценка по М4, М3 не заполнен)"
+    : f <= 3 ? "Полноценно (оценка по М4, М3 не заполнен)"
+    : "Максимально (оценка по М4, М3 не заполнен)";
+}
+
+/* Раскладка (ячейки B31-B34, B27) */
+var GLASS_OFF = 1.5;
+function layout(weeksToTrip, bsWeeks) {
+  var avail = r1(Math.max(weeksToTrip - GLASS_OFF, 0));
+  if (bsWeeks === null) return { avail: avail, bs: null, ps: null, fits: null };
+  var full = avail >= bsWeeks + 0.5;
+  return {
+    avail: avail,
+    full: full,
+    bs: full ? r1(bsWeeks) : r1(Math.max(avail - 0.5, 0)),
+    ps: full ? r1(avail - bsWeeks) : 0.5,
+    tight: weeksToTrip < bsWeeks + 2
+  };
+}
+
+/* SRS-гейт (ячейка B26): предупреждает, не запрещает */
+function srsGate(now, prev, phase) {
+  if (now === null || prev === null) return { kind: "none", text: "Нужны текущий и прошлый SRS, чтобы сравнить." };
+  if (now > prev) return { kind: "ok", text: "Без снижения - рекомендация выше в силе." };
+  if (phase === "Glass Off") return { kind: "warn", text: "SRS не выше прошлого замера, и ты уже в Glass Off - продлевать Building Swell поздно. Спроси себя честно: Peak Set пройден полностью, по программе - сессии, сон, питание по Eat-Sleep-Surf? Тогда это ожидаемая усталость (функциональный overreaching) - доверься тейперу, это нормально. Пропускал(а) тренировки или сон/еда были не в порядке? Тогда в следующем цикле не форсируй Peak Set так рано." };
+  return { kind: "warn", text: "SRS не выше прошлого замера - не форсируй переход в полноценный Peak Set из рекомендации выше, лучше продлить Building Swell. Спроси себя честно: программа соблюдалась полностью - сессии, сон, питание по Eat-Sleep-Surf? Если да - возможно, просто нужно больше времени, это не твоя вина. Если пропускал(а) - имеет смысл вернуться и продлить Building Swell осознанно, а не по инерции." };
+}
+
+function timeCheck(weeksToTrip, bsWeeks) {
+  if (bsWeeks === null) return null;
+  if (weeksToTrip < bsWeeks + 2) return "Похоже, впритык: Building Swell (" + bsWeeks + " нед.) + минимум Glass Off (2 нед.) почти равны запасу времени (" + weeksToTrip + " нед.) - Peak Set придётся сократить, см. правило самопроверки";
+  return "Похоже, времени достаточно: Building Swell (" + bsWeeks + " нед.) + Peak Set + Glass Off укладываются в запас (" + weeksToTrip + " нед.)";
+}
+
+/* Пересчёт дозировки по множителю объёма фазы: меняем число подходов/раундов/циклов, отдых, темп и критерии не трогаем */
+function scaleDose(s, m) {
+  if (m === 1 || /тест/.test(s)) return s;
+  function sc(n) { return Math.max(1, Math.round(n * m)); }
+  function rng(lo, hi) { var a = sc(+lo); if (hi === undefined) return String(a); var b = sc(+hi); return a === b ? String(a) : a + "-" + b; }
+  var out = s.replace(/(\d+)(?:-(\d+))?(\s+раунд[а-я]*\s*[×x])/g, function (_, lo, hi, tail) { return rng(lo, hi) + tail; });
+  out = out.replace(/(\d+)(?:-(\d+))?(\s*[×x](?!\s*раунд))/g, function (_, lo, hi, tail) { return rng(lo, hi) + tail; });
+  if (!/[×x]/.test(s)) out = out.replace(/(\d+)(?:-(\d+))?(\s+цикл)/g, function (_, lo, hi, tail) { return rng(lo, hi) + tail; });
+  return out;
+}
+/*ENDPURE*/
+
+var MODS = [
+  { id: "М1", name: "М1", sub: "Общая физическая база" },
+  { id: "М2", name: "М2", sub: "Гребля" },
+  { id: "М3 (лонгборд)", name: "М3 лонгборд", sub: "Тейк-оф" },
+  { id: "М3 (шортборд)", name: "М3 шортборд", sub: "Тейк-оф" },
+  { id: "М4", name: "М4", sub: "Баланс и реактивность" }
+];
+var PHASES = ["Building Swell", "Peak Set", "Glass Off"];
+var COLORS = { "Building Swell": "s-bs", "Peak Set": "s-ps", "Glass Off": "s-go" };
+var KEY = "ess-trip-v1";
+var state = { trip: "", steps: {}, srs1: "", srs0: "", tab: null };
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function dayStart(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function fmt(d) { return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(".", ""); }
+function addDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + Math.round(n)); return x; }
+function wordWeeks(n) { return String(n).replace(".", ","); }
+function num(v) { if (v === "" || v === null || v === undefined) return null; var x = parseFloat(String(v).replace(",", ".")); return isNaN(x) ? null : x; }
+
+function lookupPh(phase, mod) { for (var i = 0; i < PH.length; i++) if (PH[i][0] === phase && PH[i][1] === mod) return PH[i]; return null; }
+function lookupRef(mod, step) { for (var i = 0; i < REF.length; i++) if (REF[i][0] === mod && REF[i][1] === step) return REF[i][2]; return null; }
+
+
+var ORDER = ["R2", "R1", "Base", "P1", "P2"];
+function pickLevel(ex, step) {
+  var i = ORDER.indexOf(step), first = null, best = null, k;
+  for (k = 0; k < ORDER.length; k++) if (ex.levels[ORDER[k]]) { if (first === null) first = k; if (k <= i) best = k; }
+  if (first === null || i < first) return { none: true, first: first === null ? null : ORDER[first] };
+  return { lvl: ex.levels[ORDER[best]], used: ORDER[best], exact: best === i };
+}
+function videoHtml(v) {
+  if (!v) return "";
+  if (v.type === "file" && v.src) return '<video controls playsinline preload="none" src="' + esc(v.src) + '"' + (v.poster ? ' poster="' + esc(v.poster) + '"' : "") + '></video>';
+  if (v.type === "link" && v.url) return '<a class="vid" href="' + esc(v.url) + '" target="_blank" rel="noopener">Смотреть видео</a>';
+  return "";
+}
+function exercisesHtml(modId, step, mult, phase) {
+  var list = EX.filter(function (e) { return e.modules.indexOf(modId) >= 0; });
+  if (!list.length) return "";
+  var h = '<details class="ex"><summary>Упражнения (' + list.length + ')</summary><div class="xl">';
+  if (mult !== 1) h += '<p class="xn">Объём фазы ' + esc(phase) + ': ×' + String(mult).replace(".", ",") + '. Число подходов и раундов пересчитано автоматически (округление до целого, минимум 1). Отдых, темп и критерии остаются как есть: интенсивность сохраняется.</p>';
+  list.forEach(function (e) {
+    var r = pickLevel(e, step);
+    h += '<div class="xi"><b>' + esc(e.name) + '</b>' + (e.optional ? ' <small>(по желанию)</small>' : '');
+    if (r.none) {
+      h += '<p class="xs">Это семейство начинается со ступени ' + esc(r.first) + '. На твоей ступени (' + esc(step) + ') его пока нет.</p>';
+    } else {
+      var sd = scaleDose(r.lvl.dose, mult);
+      h += '<p class="xs"><span>Дозировка' + (sd !== r.lvl.dose ? " в этой фазе" : "") + '</span>' + esc(sd) + '</p>';
+      if (sd !== r.lvl.dose) h += '<p class="xn">Обычно: ' + esc(r.lvl.dose) + '</p>';
+      else if (mult !== 1 && !/тест/.test(r.lvl.dose)) h += '<p class="xn">Объём фазы ×' + String(mult).replace(".", ",") + ': число подходов не изменилось после округления или не пересчитывается автоматически. При необходимости сократи объём вручную.</p>';
+      if (r.lvl.how) h += '<p class="xs"><span>Как</span>' + esc(r.lvl.how) + '</p>';
+      if (r.lvl.crit) h += '<p class="xs"><span>Когда переходить дальше</span>' + esc(r.lvl.crit) + '</p>';
+      if (!r.exact) h += '<p class="xw">Отдельной ступени ' + esc(step) + ' для этого упражнения нет, остаёмся на ' + esc(r.used) + '.</p>';
+    }
+    if (e.note) h += '<p class="xn">' + esc(e.note) + '</p>';
+    h += videoHtml(e.video) + '</div>';
+  });
+  return h + '</div></details>';
+}
+
+function buildMods() {
+  var h = "";
+  MODS.forEach(function (m) {
+    h += '<div class="mod"><div class="nm">' + esc(m.name) + '<small>' + esc(m.sub) + '</small></div><select class="inp" data-mod="' + esc(m.id) + '" aria-label="Ступень ' + esc(m.name) + '"><option value="">не открыт</option>';
+    STEPS.forEach(function (s) { h += '<option value="' + s + '">' + s + '</option>'; });
+    h += '</select></div>';
+  });
+  $("mods").innerHTML = h;
+}
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ trip: state.trip, steps: state.steps, srs1: state.srs1, srs0: state.srs0 })); } catch (e) {} }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(KEY));
+    if (s) { state.trip = s.trip || ""; state.steps = s.steps || {}; state.srs1 = s.srs1 || ""; state.srs0 = s.srs0 || ""; }
+  } catch (e) {}
+  $("trip").value = state.trip; $("srs1").value = state.srs1; $("srs0").value = state.srs0;
+  var sel = document.querySelectorAll("select[data-mod]");
+  for (var i = 0; i < sel.length; i++) sel[i].value = state.steps[sel[i].getAttribute("data-mod")] || "";
+}
+
+function plan() {
+  var today = dayStart(new Date());
+  if (!state.trip) return null;
+  var p = state.trip.split("-"); var trip = new Date(+p[0], +p[1] - 1, +p[2]);
+  var days = Math.round((trip - today) / 86400000);
+  return { today: today, trip: trip, days: days, weeks: r1(days / 7) };
+}
+
+function render() {
+  var pl = plan();
+  var wk = $("wk"), res = $("res");
+  if (!pl) { wk.hidden = true; res.hidden = true; return; }
+  if (pl.days < 0) { wk.hidden = false; wk.className = "badge bad"; wk.textContent = "Эта дата уже прошла"; res.hidden = true; return; }
+  wk.hidden = false; wk.className = "badge"; wk.textContent = "До трипа: " + wordWeeks(pl.weeks) + " нед. (" + pl.days + " дн.)";
+
+  var st = state.steps;
+  var bs = buildingSwell(st["М1"], st["М2"]);
+  var ps = peakSet(st["М3 (лонгборд)"], st["М3 (шортборд)"], st["М4"]);
+  var lay = layout(pl.weeks, bs.weeks);
+  var h = '<h2 class="res-title">Твой расклад</h2>';
+
+  if (bs.weeks === null) {
+    h += '<div class="card" style="margin-top:16px"><h3>Нужен хотя бы М1 или М2</h3><p>Отметь свою ступень по М1 или М2 в шаге 2, и я построю расклад по фазам.</p></div>';
+    res.innerHTML = h; res.hidden = false; return;
+  }
+
+  /* Реальные отрезки: Glass Off всегда защищён первым */
+  var goW = Math.min(GLASS_OFF, pl.weeks);
+  var rest = pl.weeks - goW;
+  var psW = Math.min(lay.ps, rest);
+  var bsW = Math.min(lay.bs, Math.max(rest - psW, 0));
+  var segs = [["Building Swell", bsW], ["Peak Set", psW], ["Glass Off", goW]].filter(function (s) { return s[1] > 0; });
+  var total = segs.reduce(function (a, s) { return a + s[1]; }, 0) || 1;
+
+  h += '<div class="bar" role="img" aria-label="Фазы до трипа">';
+  segs.forEach(function (s) { h += '<i class="' + COLORS[s[0]] + '" style="width:' + (s[1] / total * 100) + '%"></i>'; });
+  h += '</div><div class="phases">';
+  var cur = pl.today, firstPhase = segs[0][0];
+  segs.forEach(function (s, i) {
+    var end = i === segs.length - 1 ? pl.trip : addDays(cur, s[1] * 7);
+    var label = i === segs.length - 1 ? fmt(cur) + " – вылет, " + fmt(pl.trip) : fmt(cur) + " – " + fmt(end);
+    h += '<div class="ph"><span class="sw ' + COLORS[s[0]] + '"></span><div><b>' + s[0] + '</b><span class="dt">' + esc(label) + '</span></div><div class="wk">' + wordWeeks(r1(s[1])) + '<small>нед.</small></div></div>';
+    cur = end;
+  });
+  h += '</div>';
+  h += '<p class="hint">Расчёт для старта сегодня. Начинаешь позже, пересчитай ближе к делу.</p>';
+
+  h += '<div class="box2">';
+  h += '<div class="card"><h3>Building Swell для тебя сейчас</h3><p>' + esc(bs.text) + '</p></div>';
+  h += '<div class="card"><h3>Peak Set для тебя сейчас</h3><p>' + esc(ps) + '</p></div>';
+  var tc = timeCheck(pl.weeks, bs.weeks);
+  h += '<div class="card ' + (lay.tight ? "warn" : "ok") + '"><h3>Хватает ли времени</h3><p>' + esc(tc.replace(/(\d)\.(\d)/g, "$1,$2")) + '</p></div>';
+  if (!lay.full) h += '<div class="card warn"><h3>Расклад сжат</h3><p>Glass Off защищён первым, Building Swell получает почти всё доступное время, Peak Set сжимается до реактивационного минимума (0,5 нед.): только реактивация взрывных качеств, без наращивания базы.</p></div>';
+  if (lay.full && lay.ps > 3) h += '<div class="card warn"><h3>Peak Set получился длинным</h3><p>Время до трипа большое, и по текущему правилу всё лишнее уходит в Peak Set. В схеме Peak Set обычно занимает 2-3 недели. Это место логики ещё в доработке.</p></div>';
+  var s1 = num(state.srs1), s0 = num(state.srs0);
+  var g = srsGate(s1, s0, firstPhase);
+  if (g.kind !== "none") h += '<div class="card ' + (g.kind === "ok" ? "ok" : "warn") + '"><h3>SRS</h3><p>' + esc(g.text) + '</p></div>';
+  h += '</div>';
+
+  /* Что делать по фазам */
+  if (!state.tab || segs.every(function (s) { return s[0] !== state.tab; })) state.tab = firstPhase;
+  h += '<h2 class="res-title" style="margin-top:40px;font-size:22px">Что делать по фазам</h2><p class="libl"><a href="' + LIB_URL + '" target="_blank" rel="noopener">Открыть всю библиотеку упражнений (все модули)</a></p><div class="tabs" role="radiogroup" aria-label="Фаза">';
+  segs.forEach(function (s) {
+    h += '<label class="tab"><input type="radio" name="ph" value="' + s[0] + '"' + (state.tab === s[0] ? " checked" : "") + '><span>' + s[0] + '</span></label>';
+  });
+  h += '</div><div class="todo">';
+  var any = false;
+  MODS.forEach(function (m) {
+    var step = st[m.id]; if (!step) return;
+    any = true;
+    var f = lookupPh(state.tab, m.id), t = lookupRef(m.id, step);
+    h += '<div class="td"><div class="hd"><b>' + esc(m.name) + ' · ' + esc(step) + '</b>' + (f ? '<span class="tag' + (f[2] === "В фокусе" ? " f" : "") + '">' + esc(f[2]) + '</span><span class="vol">объём ×' + String(f[3]).replace(".", ",") + '</span>' : '') + '</div>';
+    if (f) h += '<p><b>Фаза:</b> ' + esc(f[4]) + '</p>';
+    if (t) h += '<p><b>На твоей ступени:</b> ' + esc(t) + '</p>';
+    h += exercisesHtml(m.id, step, f ? f[3] : 1, state.tab);
+    h += '</div>';
+  });
+  if (!any) h += '<div class="td"><p>Отметь ступени модулей в шаге 2, и здесь появится, что делать в каждой фазе.</p></div>';
+  h += '</div>';
+
+  var sum = "Трип " + fmt(pl.trip) + ", до него " + wordWeeks(pl.weeks) + " нед. " + segs.map(function (s) { return s[0] + " " + wordWeeks(r1(s[1])) + " нед."; }).join(", ") + ".";
+  h += '<div class="actions"><button class="btn main" id="copy" type="button">Скопировать расклад</button><span class="tip" id="tip"></span></div>';
+  res.innerHTML = h; res.hidden = false;
+  $("copy").onclick = function () {
+    function done(ok) { $("tip").textContent = ok ? "Скопировано" : "Не вышло, выдели текст вручную"; }
+    try { navigator.clipboard.writeText(sum).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
+  };
+}
+
+document.addEventListener("change", function (e) {
+  var el = e.target; if (!el) return;
+  if (el.id === "trip") state.trip = el.value;
+  else if (el.id === "srs1") state.srs1 = el.value;
+  else if (el.id === "srs0") state.srs0 = el.value;
+  else if (el.getAttribute && el.getAttribute("data-mod")) state.steps[el.getAttribute("data-mod")] = el.value;
+  else if (el.name === "ph") state.tab = el.value;
+  else return;
+  save(); render();
+});
+document.addEventListener("input", function (e) {
+  var el = e.target; if (!el) return;
+  if (el.id === "srs1") state.srs1 = el.value; else if (el.id === "srs0") state.srs0 = el.value; else return;
+  save(); render();
+});
+
+var today = new Date(); var mm = today.getMonth() + 1, dd = today.getDate();
+$("trip").min = today.getFullYear() + "-" + (mm < 10 ? "0" : "") + mm + "-" + (dd < 10 ? "0" : "") + dd;
+buildMods(); load(); render();
+window.__tripPure = { scaleDose: scaleDose, buildingSwell: buildingSwell, peakSet: peakSet, layout: layout, srsGate: srsGate, timeCheck: timeCheck };
+})();
+</script>
+</body>
+</html>
