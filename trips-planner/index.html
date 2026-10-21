@@ -52,6 +52,14 @@ h1 { font-size: clamp(36px, 10vw, 58px); line-height: 1; font-weight: 800; lette
 .zr .nm small { display: block; font: 500 12.5px/1.3 var(--f-body); color: var(--muted); }
 .zman { margin-top: 12px; }
 .zman > summary { cursor: pointer; font: 700 14px/1.4 var(--f-display); color: var(--accent-text); padding: 4px 0; }
+.rt { margin-top: 14px; border: 1px solid var(--sage-deep); border-radius: 14px; padding: 12px 14px; background: var(--sage); }
+.rt h3 { margin: 0 0 8px; font: 700 15px/1.3 var(--f-display); }
+.rt table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.rt th, .rt td { text-align: left; vertical-align: bottom; padding: 4px 0; border-bottom: 1px solid var(--sage-deep); }
+.rt th:not(:first-child), .rt td:not(:first-child) { text-align: right; width: 22%; }
+.rt tr:last-child td { border-bottom: 0; font-weight: 700; }
+.rt .up { color: var(--accent-text); } .rt .dn { color: var(--warn-ink); }
+.rtbtn { display: inline-block; margin-top: 12px; text-decoration: none; color: inherit; }
 .srsline { margin-top: 14px; font: 700 15px/1.3 var(--f-display); }
 .srsline b { font-size: 22px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
 .chk { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font-size: 15px; line-height: 1.4; cursor: pointer; }
@@ -162,7 +170,7 @@ a.mark { color: inherit; text-decoration: none; } a.mark:focus-visible { outline
       <div class="field"><label for="trip">Дата вылета</label><input class="inp" type="date" id="trip"></div>
       <div class="field"><label for="start">Начал подготовку</label><input class="inp" type="date" id="start"></div>
     </div>
-    <p class="hint">«Начал подготовку» можно не заполнять, тогда считаем от сегодня. Если уже тренируешься по плану, впиши дату старта, чтобы фазы не съезжали.</p>
+    <p class="hint">«Начал подготовку» подставляется сама в день первого SRS. Если уже тренируешься по плану дольше, впиши реальную дату старта, чтобы фазы не съезжали.</p>
     <span class="badge" id="wk" hidden></span>
   </section>
 
@@ -172,6 +180,7 @@ a.mark { color: inherit; text-decoration: none; } a.mark:focus-visible { outline
     <p class="badge" id="zfrom" hidden></p>
     <details class="zman" id="zman"><summary>Ввести или поправить оценки вручную</summary><div class="zgrid" id="zones"></div></details>
     <p class="srsline">SRS сейчас: <b id="srsnow">–</b> / 10</p>
+    <div id="retest"></div>
     <div class="field" style="max-width:220px"><label for="srs0">SRS в прошлый раз</label><input class="inp" id="srs0" type="number" inputmode="decimal" min="0" max="10" step="0.1" placeholder="если пересдаёшь"></div>
     <label class="chk"><input type="checkbox" id="fext"><span>В SRS был флаг разгибания</span></label>
     <label class="chk"><input type="checkbox" id="fred"><span>В SRS был красный флаг (боль в пояснице в тесте или головокружение)</span></label>
@@ -388,6 +397,7 @@ function doseText(ex, step, glassOff, block0, extra) {
 
 var byId = {}; EX.forEach(function (e) { byId[e.id] = e; });
 var LIB_URL = "../library/";
+var SRS_URL = "../srs/";
 var SCORES = ["0", "0.3", "0.5", "0.7", "1", "1.3", "1.5", "1.7", "2"];
 var COLORS = { "Flat Spell": "s-fs", "Building Swell": "s-bs", "Peak Set": "s-ps", "Glass Off": "s-go" };
 var KEY = "ess-trip-v2";
@@ -405,28 +415,41 @@ function example() {
   var t = addDays(dayStart(new Date()), 98);
   return { ex: true, trip: isoD(t), start: "", z: { shoulders: "1.5", hips: "1", core: "0.5", balance: "1.3", strength: "1.5" }, srs0: "", ext: false, red: false, gym: false, over: {}, tab: null, week: 1 };
 }
-function blank() { return { zSrs: false, zAt: 0, ex: false, trip: "", start: "", z: {}, srs0: "", ext: false, red: false, gym: false, over: {}, tab: null, week: 1 }; }
+function blank() { return { baseZ: null, prevZ: null, zSrs: false, zAt: 0, ex: false, trip: "", start: "", z: {}, srs0: "", ext: false, red: false, gym: false, over: {}, tab: null, week: 1 }; }
 var state = example();
 try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s === "object") { state = blank(); for (var k in s) state[k] = s[k]; state.ex = false; } } catch (e) {}
 function importSrs() {
-  var m = /^#z([0-9._]+)((?:-[per][0-9.]+)*)$/.exec(location.hash || ""), src = null;
+  var m = /^#z([0-9._]+)((?:-[pera][0-9.]+)*)$/.exec(location.hash || ""), src = null;
   if (m) {
     var v = m[1].split("_");
     if (v.length === 5) { src = { zones: {}, at: Date.now() }; ZONES.forEach(function (z, i) { src.zones[z.id] = parseFloat(v[i]); });
-      (m[2].match(/-[per][0-9.]+/g) || []).forEach(function (t) { var k = t.charAt(1), x = t.slice(2); if (k === "p") src.prev = parseFloat(x); if (k === "e") src.ext = x === "1"; if (k === "r") src.red = x === "1"; }); }
+      (m[2].match(/-[pera][0-9.]+/g) || []).forEach(function (t) { var k = t.charAt(1), x = t.slice(2); if (k === "a") src.at = parseInt(x, 10); if (k === "p") src.prev = parseFloat(x); if (k === "e") src.ext = x === "1"; if (k === "r") src.red = x === "1"; }); }
   } else { try { var ls = JSON.parse(localStorage.getItem("ess-srs-zones")); if (ls && ls.zones && ls.at > (state.zAt || 0)) src = ls; } catch (e) {} }
-  if (!src) return;
+  if (!src) return false;
   var ok = ZONES.every(function (z) { var x = src.zones[z.id]; return typeof x === "number" && x >= 0 && x <= 2; });
-  if (!ok) return;
+  if (!ok) return false;
+  if (src.at && src.at === state.zAt) return false; /* этот замер уже подставлен */
   if (state.ex) { var t = state.trip; state = blank(); state.trip = ""; }
+  /* Пересдача: прошлые оценки сохраняем для сравнения, план пересчитывается по новым */
+  var had = ZONES.every(function (z) { return sc(state.z[z.id]) !== null; });
+  if (had) { var pz = {}, pt = 0; ZONES.forEach(function (z) { pz[z.id] = state.z[z.id]; pt += sc(state.z[z.id]); }); state.prevZ = { z: pz, at: state.zAt || 0 }; var begun = parseD(state.start) && parseD(state.start) < dayStart(new Date()); /* подготовка уже идёт: календарь держим по стартовому замеру */
+    if (!begun) state.baseZ = null; else if (!state.baseZ) state.baseZ = { z: pz, at: state.zAt || 0 }; src.prev = Math.round(pt * 10) / 10; }
   ZONES.forEach(function (z) { state.z[z.id] = String(Math.round(src.zones[z.id] * 10) / 10); });
   if (typeof src.prev === "number") state.srs0 = String(src.prev);
   state.ext = !!src.ext; state.red = !!src.red; state.zAt = src.at || Date.now(); state.zSrs = true;
+  if (!state.start) state.start = isoD(dayStart(new Date())); /* старт подготовки = день первого SRS, чтобы фазы не съезжали */
   save();
   try { if (m && history.replaceState) history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+  return true;
 }
 function save() { if (state.ex) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
+/* Стартовый SRS: по нему считаются даты и длительность фаз до конца подготовки. Пересдачи меняют только характер (тип Peak Set, ступени, акценты) */
+function baseVals() {
+  var b = state.baseZ; if (!b || !b.z) return null;
+  var o = {}, ok = true; ZONES.forEach(function (z) { o[z.id] = sc(b.z[z.id]); if (o[z.id] === null) ok = false; });
+  return ok ? o : null;
+}
 function zoneVals() { var o = {}; ZONES.forEach(function (z) { o[z.id] = sc(state.z[z.id]); }); return o; }
 function steps(zv) {
   var st = startSteps(zv), out = {};
@@ -499,15 +522,35 @@ function weekHtml(phase, st, ps, lag) {
   return h;
 }
 
+function n1(x) { return (Math.round(x * 10) / 10).toFixed(1).replace(".", ","); }
+function retestBtn(label) { return '<a class="btn' + (label ? " main" : "") + ' rtbtn" href="' + SRS_URL + '#retest">' + (label || "Пересдать SRS") + '</a>'; }
+function retestHtml(zv) {
+  var h = "", pz = state.prevZ, all = ZONES.every(function (z) { return zv[z.id] !== null; });
+  if (pz && pz.z && all) {
+    var a = 0, b = 0, rows = "";
+    ZONES.forEach(function (z) {
+      var x = sc(pz.z[z.id]), y = zv[z.id]; a += x || 0; b += y;
+      var c = x === null ? "" : y > x + E ? "up" : y < x - E ? "dn" : "";
+      rows += '<tr><td>' + esc(z.name) + '</td><td>' + (x === null ? "–" : n1(x)) + '</td><td class="' + c + '">' + n1(y) + '</td></tr>';
+    });
+    var d = b - a, dc = d > E ? "up" : d < -E ? "dn" : "";
+    var d0 = pz.at ? fmt(new Date(pz.at)) : "", d1 = state.zAt ? fmt(new Date(state.zAt)) : "";
+    h += '<div class="rt"><h3>Пересдача SRS: ' + n1(b) + ' из 10 (было ' + n1(a) + ', <span class="' + dc + '">' + (d > E ? "+" : "") + n1(d) + '</span>)</h3><table><tr><th>Зона</th><th>Было' + (d0 ? "<br><small>" + d0 + "</small>" : "") + '</th><th>Стало' + (d1 ? "<br><small>" + d1 + "</small>" : "") + '</th></tr>' + rows + '<tr><td>SRS</td><td>' + n1(a) + '</td><td class="' + dc + '">' + n1(b) + '</td></tr></table></div>';
+  }
+  if (all) h += retestBtn();
+  return h;
+}
+
 function render() {
   var zv = zoneVals(), st = steps(zv);
+  $("retest").innerHTML = retestHtml(zv);
   renderMods(st);
   var cnt = 0, sum = 0; ZONES.forEach(function (z) { if (zv[z.id] !== null) { cnt++; sum += zv[z.id]; } });
   var srsNow = cnt === 5 ? sum : null;
   $("srsnow").textContent = srsNow === null ? "–" : (Math.round(srsNow * 10) / 10).toFixed(1).replace(".", ",");
   var today = dayStart(new Date()), trip = parseD(state.trip), start = parseD(state.start) || today;
   var wk = $("wk"), res = $("res"), h = "";
-  var bs = bsPlan(zv), ps = psPlan(zv), lay = null, phaseNow = "Flat Spell", segs = [];
+  var zb = baseVals() || zv, bs = bsPlan(zb), psB = psPlan(zb), ps = psPlan(zv), lay = null, phaseNow = "Flat Spell", segs = [];
   if (trip) {
     var days = Math.round((trip - start) / 86400000), left = Math.round((trip - today) / 86400000);
     if (left < 0) { wk.hidden = false; wk.className = "badge"; wk.textContent = "Трип позади"; phaseNow = "После трипа"; }
@@ -516,7 +559,7 @@ function render() {
     else {
       wk.hidden = false; wk.className = "badge"; wk.textContent = "До трипа: " + nw(left / 7) + " нед. (" + left + " дн.)";
       if (bs) {
-        lay = layout(r1(days / 7), bs.weeks, ps ? ps.kind : 0);
+        lay = layout(r1(days / 7), bs.weeks, psB ? psB.kind : 0);
         /* Границы в днях от вылета назад; первая непустая фаза всегда начинается с даты старта, чтобы округление не оставляло «дыр» */
         var goS = addDays(trip, -Math.round(lay.go * 7)), psS = addDays(goS, -Math.round(lay.ps * 7)), bsS = addDays(psS, -Math.round(lay.bs * 7));
         if (!(lay.fs > 0)) { if (lay.bs > 0) bsS = start; else if (lay.ps > 0) { psS = start; bsS = start; } else { goS = start; psS = start; bsS = start; } }
@@ -527,6 +570,23 @@ function render() {
   } else wk.hidden = true;
 
   h += '<h2 class="res-title">Твой план</h2>';
+  /* Напоминание о промежуточном SRS: за 3 дня до смены фазы и пока фаза идёт, если пересдачи ещё не было */
+  var rem = null;
+  if (lay && phaseNow !== "После трипа") {
+    [["Building Swell", lay.bs > 0 ? bsS : null], ["Peak Set", lay.ps > 0 ? psS : null], ["Glass Off", lay.go > 0 ? goS : null]].forEach(function (p) {
+      if (rem || !p[1]) return;
+      var d0 = p[1], from = addDays(d0, -3);
+      if (d0 - start < 4 * 86400000) return;              /* фаза началась вместе с планом: стартовый SRS и есть замер на входе */
+      if (today < from) return;                           /* ещё рано */
+      if (today >= d0 && phaseNow !== p[0]) return;       /* фаза уже прошла */
+      if ((state.zAt || 0) >= from.getTime()) return;     /* пересдача уже была */
+      rem = { phase: p[0], days: Math.round((d0 - today) / 86400000) };
+    });
+  }
+  if (rem) {
+    var why = { "Building Swell": "Он покажет, как база Flat Spell отразилась на зонах.", "Peak Set": "Он покажет, готов ли ты к полноценной нагрузке Peak Set.", "Glass Off": "Это контроль перед трипом: важно, что ни одна зона не просела." }[rem.phase];
+    h += '<div class="box2"><div class="card warn"><h3>' + (rem.days > 0 ? "Через " + rem.days + " дн. " + rem.phase + ": пора пересдать SRS" : "Ты в " + rem.phase + ": пора пересдать SRS") + '</h3><p>Сделай промежуточный SRS на входе в фазу. ' + why + ' После теста нажми «Вернуться в план»: новые оценки встанут сюда, прошлые останутся рядом для сравнения.</p>' + retestBtn("Пересдать SRS") + '</div></div>';
+  }
   if (!bs) h += '<div class="card" style="margin-top:16px"><h3>Нужны оценки зон</h3><p>Заполни хотя бы Кор и Плечи в шаге 2: по ним считается длительность Building Swell. Пока показываю неделю Flat Spell.</p></div>';
   else if (!lay) h += '<div class="card" style="margin-top:16px"><h3>Добавь дату вылета</h3><p>Building Swell для тебя: ' + esc(bs.text) + '. С датой построю календарь. Пока показываю неделю Flat Spell.</p></div>';
   else {
@@ -540,8 +600,8 @@ function render() {
       h += '<div class="ph' + (phaseNow === s[0] ? " now" : "") + '"><span class="sw ' + COLORS[s[0]] + '"></span><div><b>' + s[0] + (phaseNow === s[0] ? '<span class="nowtag">сейчас</span>' : '') + '</b><span class="dt">' + esc(label) + '</span><span class="srs">SRS: ' + esc(s[4]) + '</span></div><div class="wk">' + nw(s[1]) + '<small>нед.</small></div></div>';
     });
     h += '</div><div class="box2">';
-    if (lay.bs > 0) h += '<div class="card"><h3>Почему Building Swell ' + esc(bs.text.replace("~", "около ")) + '</h3><p>Длительность считается по двум зонам SRS: Кор и Плечи. Твой средний балл по ним ' + String(r1(bs.avg)).replace(".", ",") + ' из 2. Чем он выше, тем короче фаза.</p><p>Ступени модулей на календарь не влияют. Пересдал SRS: обнови оценки, дату старта не меняй.</p></div>';
-    if (ps && lay.ps > 0) h += '<div class="card' + (ps.kind === 0 ? " warn" : "") + '"><h3>Каким будет Peak Set: ' + ["щадящим", "безколенным", "полноценным"][ps.kind] + '</h3><p>' + ["Тейк-оф с промежуточным коленом, без прыжков.", "Тейк-оф без колена, взрывная работа умеренная.", "Взрывная работа в полном объёме."][ps.kind] + ' Тип определяют зоны SRS: ТБС, Сила и Баланс.</p></div>';
+    if (lay.bs > 0) h += '<div class="card"><h3>Почему Building Swell ' + esc(bs.text.replace("~", "около ")) + '</h3><p>Длительность считается по двум зонам SRS: Кор и Плечи. Твой средний балл по ним ' + String(r1(bs.avg)).replace(".", ",") + ' из 2. Чем он выше, тем короче фаза.</p><p>Ступени модулей на календарь не влияют. Пересдал SRS: оценки обновятся сами, а даты и длительность фаз останутся по стартовому замеру.</p></div>';
+    if (ps && lay.ps > 0) h += '<div class="card' + (ps.kind === 0 ? " warn" : "") + '"><h3>Каким будет Peak Set: ' + ["щадящим", "безколенным", "полноценным"][ps.kind] + '</h3><p>' + ["Тейк-оф с промежуточным коленом, без прыжков.", "Тейк-оф без колена, взрывная работа умеренная.", "Взрывная работа в полном объёме."][ps.kind] + ' Тип определяют зоны SRS: ТБС, Сила и Баланс.' + (psB && psB.kind !== ps.kind ? ' По пересдаче тип сменился: на старте был ' + ["щадящий", "безколенный", "полноценный"][psB.kind] + '. Даты и длительность фаз остаются по стартовому SRS.' : '') + '</p></div>';
     if (lay.mode === "short-ps") h += '<div class="card warn"><h3>Peak Set короче обычного</h3><p>Building Swell по SRS помещается целиком, на Peak Set остаётся ' + nw(lay.ps) + ' нед. вместо 2,5. Glass Off защищён.</p></div>';
     if (lay.mode === "tight" && lay.bs === 0 && lay.ps === 0) h += '<div class="card warn"><h3>Только Glass Off</h3><p>До вылета меньше 1,5 недели: на Building Swell и Peak Set времени нет. Сейчас главное свежесть: сокращённые сессии, сон и еда по Eat-Sleep-Surf. Ничего нового не добавляй.</p></div>';
     else if (lay.mode === "tight") h += '<div class="card warn"><h3>Впритык</h3><p>Времени не хватает на обе фазы целиком. Glass Off защищён первым. ' + (lay.psMin > PS_MIN && lay.ps > PS_MIN ? "База по SRS уже неплохая, поэтому Peak Set сохраняет " + nw(lay.ps) + " нед., а Building Swell сжат до " + nw(lay.bs) + " нед. вместо " + nw(bs.weeks) + "." : "Building Swell получает " + nw(lay.bs) + " нед. вместо " + nw(bs.weeks) + ", Peak Set " + (lay.ps > 0 ? "только реактивация взрывных качеств, " + nw(lay.ps) + " нед." : "не помещается") + (lay.ps > 0 ? "" : ".")) + ' Делай что успеваешь, без форсирования объёма.</p></div>';
@@ -577,8 +637,8 @@ function render() {
 function touch() { if (state.ex) { state.ex = false; $("exbox").hidden = true; } save(); render(); }
 document.addEventListener("change", function (e) {
   var el = e.target; if (!el) return;
-  if (el.id === "trip") state.trip = el.value;
-  else if (el.id === "start") state.start = el.value;
+  if (el.id === "trip") { state.trip = el.value; state.baseZ = null; }  /* новый трип = новый стартовый замер */
+  else if (el.id === "start") { state.start = el.value; state.baseZ = null; }
   else if (el.id === "srs0") state.srs0 = el.value;
   else if (el.id === "fext") state.ext = el.checked;
   else if (el.id === "fred") state.red = el.checked;
@@ -593,6 +653,11 @@ document.addEventListener("change", function (e) {
 document.addEventListener("input", function (e) { if (e.target && e.target.id === "srs0") { state.srs0 = e.target.value; touch(); } });
 $("clear").onclick = function () { state = blank(); fill(); save(); render(); };
 importSrs(); buildInputs(); fill(); render();
+/* Вернулся с пересдачи в эту же вкладку: подхватываем новый замер */
+function recheck() { if (importSrs()) { fill(); render(); } }
+window.addEventListener("hashchange", recheck);
+window.addEventListener("focus", recheck);
+document.addEventListener("visibilitychange", function () { if (!document.hidden) recheck(); });
 window.__tripPure = { layout: layout, bsPlan: bsPlan, psPlan: psPlan, startSteps: startSteps, buildWeeks: buildWeeks, doseText: doseText };
 })();
 </script>

@@ -341,6 +341,7 @@ var variant = {};   // testId -> variantId
 var hist = "no", extA = null, flexA = null;
 var KEY = "ess-srs-last";
 var PLANNER_URL = "../trips-planner/";
+var RETEST = /^#retest/.test(location.hash || ""); /* пришли из планировщика на пересдачу */
 
 function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
 function $(id) { return document.getElementById(id); }
@@ -487,14 +488,15 @@ function show() {
   var prevSrs = prevRaw && typeof prevRaw.srs === "number" ? Math.round(prevRaw.srs * 10) / 10 : null;
   var extOn = hist === "yes" && extensionFlag(extA, flexA);
   var redOn = Object.keys(ans).some(function (k) { return ans[k].flag === "bs" || ans[k].flag === "vest"; });
-  var code = "z" + ZONE_ORDER.map(function (id) { return String(zmap[id]); }).join("_") + (prevSrs !== null ? "-p" + prevSrs : "") + (extOn ? "-e1" : "") + (redOn ? "-r1" : "");
-  h += '<div class="plan"><h3>Дальше: план до трипа</h3><p>Оценки зон перенесутся в планировщик сами, вводить ничего не нужно.</p><a class="btn" href="' + PLANNER_URL + '#' + code + '" >Построить план тренировок</a></div>';
+  var at = Date.now();
+  var code = "z" + ZONE_ORDER.map(function (id) { return String(zmap[id]); }).join("_") + (prevSrs !== null ? "-p" + prevSrs : "") + (extOn ? "-e1" : "") + (redOn ? "-r1" : "") + "-a" + at;
+  h += '<div class="plan">' + (RETEST ? '<h3>Пересдача готова</h3><p>Вернись в планировщик: новые оценки встанут в план, прошлые останутся рядом для сравнения.</p>' : '<h3>Дальше: план до трипа</h3><p>Оценки зон перенесутся в планировщик сами, вводить ничего не нужно.</p>') + '<a class="btn" href="' + PLANNER_URL + '#' + code + '" >' + (RETEST ? "Вернуться в план" : "Построить план тренировок") + '</a></div>';
   var summary = "SRS " + f1(r.srs) + "/10, приоритетная зона: " + prioNames.join(", ");
   h += '<div class="actions"><button class="btn ghost" id="copy">Скопировать результат</button><button class="btn ghost" id="again">Пройти заново</button><span class="tip" id="tip"></span></div>';
 
   var res = $("result"); res.innerHTML = h; res.hidden = false;
   try { localStorage.setItem(KEY, JSON.stringify({ srs: r.srs, at: Date.now() })); } catch (e) {}
-  try { localStorage.setItem("ess-srs-zones", JSON.stringify({ zones: zmap, prev: prevSrs, ext: extOn, red: redOn, at: Date.now() })); } catch (e) {}
+  try { localStorage.setItem("ess-srs-zones", JSON.stringify({ zones: zmap, prev: prevSrs, ext: extOn, red: redOn, at: at })); } catch (e) {}
   res.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 
   $("copy").onclick = function () {
