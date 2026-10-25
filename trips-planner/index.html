@@ -329,6 +329,8 @@ var FAM = {
   "М4": ["m4-pbt", "m4-stance"]
 };
 var FINISHER = "m1-burpee";
+var FIRST_EX = "m1-pails";   /* мобильность ТБС: всегда первым или вторым упражнением */
+var HOLD_P2_ID = "m1-hold";   /* на ступени P2 Rib Stack Hold уходит из блока 0 в финишер вместо Surf-Burpee */
 var SHORT_IDS = { "m3-tuck": 1, "m3-popup": 1 };
 /* Две недели = 6 сессий. Возвращает [{week, session, items:[{pos, label, mod, ex}]}] */
 function buildWeeks(phase, withShort) {
@@ -346,8 +348,11 @@ function buildWeeks(phase, withShort) {
     var used = items.map(function (x) { return x.ex; });
     items.forEach(function (it) {
       if (it.mod === "М1") return;
-      for (var t = 0; t < FAM["М1"].length; t++) { var c = FAM["М1"][altPtr++ % FAM["М1"].length]; if (used.indexOf(c) < 0) { it.alt = c; used.push(c); break; } }
+      for (var t = 0; t < FAM["М1"].length; t++) { var c = FAM["М1"][altPtr++ % FAM["М1"].length]; if (c !== FIRST_EX && used.indexOf(c) < 0) { it.alt = c; used.push(c); break; } }
     });
+    /* PAILs/RAILs всегда в начале сессии: сразу после блока 0 (вторым упражнением) */
+    var fi = -1; items.forEach(function (x, k) { if (x.ex === FIRST_EX) fi = k; });
+    if (fi > 1) { var mv = items.splice(fi, 1)[0]; items.splice(1, 0, mv); items.forEach(function (x, k) { if (k > 0) { x.pos = k; x.label = "Слот " + k; } }); }
     items.push({ pos: 9, label: "Финишер", mod: "М1", ex: FINISHER });
     out.push({ week: i < 3 ? 1 : 2, session: "ABC".charAt(i % 3), items: items });
   }
@@ -510,14 +515,17 @@ function weekHtml(phase, st, ps, lag) {
   if (bsw && (lag["М3"] || lag["М4"])) h += '<div class="card" style="margin-top:12px"><h3>Акцент на отстающие зоны</h3><p>По SRS от Кора и Плеч отстаёт ' + (lag["М3"] && lag["М4"] ? "М3 (ТБС и Сила) и М4 (Баланс)" : lag["М3"] ? "М3 (ТБС и Сила)" : "М4 (Баланс)") + ': оценка 1 из 2 или ниже. В Building Swell эти упражнения идут с одним дополнительным подходом, он уже добавлен.</p></div>';
   if (phase === "Peak Set" && ps && ps.kind === 0) h += '<div class="card warn" style="margin-top:12px"><h3>Щадящий Peak Set</h3><p>По SRS тейк-оф пока с промежуточным коленом и без прыжков. Взрывные варианты делай медленнее или пропускай. Это предупреждение, решение за тобой.</p></div>';
   weeks.filter(function (s) { return s.week === state.week; }).forEach(function (s) {
+    var holdP2 = st.eff["М1"] === "P2" && s.items[0] && s.items[0].ex === HOLD_P2_ID && !(state.over["М1"] === "closed");
     h += '<div class="sess"><h3>Сессия ' + s.session + '<span>' + s.items.length + ' упражнений' + (go ? ', тейпер' : '') + '</span></h3>';
     s.items.forEach(function (it) {
-      var e = byId[it.ex], step = st.eff[it.mod], d, warn = false, mod = it.mod, insteadOf = "";
+      var e = byId[it.ex], step = st.eff[it.mod], d, warn = false, mod = it.mod, insteadOf = "", note = "";
+      if (holdP2 && it.pos === 0) { step = "P1"; note = " (P2 этого упражнения — в финишере сессии)"; }
+      if (holdP2 && it.pos === 9) { e = byId[HOLD_P2_ID]; note = " (вместо Surf-Burpee: Rib Stack Hold P2, держим Rib Stack в утомлении)"; }
       if (state.over[it.mod] === "closed" && it.alt) { insteadOf = it.mod === "М3L" ? "М3" : it.mod; e = byId[it.alt]; mod = "М1"; step = st.eff["М1"]; }
       var extra = bsw && !insteadOf && ((lag["М3"] && (mod === "М3L" || mod === "М3S")) || (lag["М4"] && mod === "М4"));
       if (state.ext && it.ex === "m1-extension") { d = { text: "Пропускаем (флаг разгибания): вместо него Bird Dog на своей ступени", how: "", crit: "" }; warn = true; }
       else if (!step && state.over[mod] !== "closed" && mod !== "М3S") { d = { text: "Нужна оценка зоны " + (mod === "М4" ? "Баланс" : mod === "М1" ? "Кор" : mod === "М2" ? "Плечи" : "ТБС и Сила") + " из SRS, чтобы выбрать ступень.", how: "", crit: "" }; warn = true; }
-      else { d = doseText(e, step, go, it.pos === 0, extra); warn = !!(d.early || d.closed); if (extra) d.text += " (+1 подход: отстающая зона)"; }
+      else { d = doseText(e, step, go, it.pos === 0, extra); warn = !!(d.early || d.closed); if (extra) d.text += " (+1 подход: отстающая зона)"; if (note) d.text += note; }
       var mn = insteadOf ? "М1 вместо " + insteadOf : mod === "М3L" ? "М3 лонгборд" : mod === "М3S" ? "М3 шортборд" : mod;
       h += '<div class="it"><div class="bl">' + esc(it.pos === 0 ? "Блок 0" : it.pos === 9 ? "Финишер" : "Слот " + it.pos) + '<em>' + esc(mn) + '</em></div><div class="bd"><div class="nmx">' + esc(e.name) + (step && !warn ? '<span class="st">' + esc(d.used || step) + '</span>' : '') + '</div><p class="ds' + (warn ? " w" : "") + '">' + esc(d.text) + '</p>';
       h += '<details><summary>Как выполнять</summary>' + videoHtml(e.video, d.used) + (d.how ? '<p>' + esc(d.how) + '</p>' : '') + (d.crit ? '<p>Дальше: ' + esc(d.crit) + '</p>' : '') + '</details>';
