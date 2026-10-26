@@ -359,9 +359,9 @@ function sessionSlots(phase, i) {
    Порядок детерминированный (smooth weighted round-robin): «3» выходит втрое чаще «1», без случайности. */
 var PHASE_KEY = { "Flat Spell": "FS", "Building Swell": "BS", "Peak Set": "PS", "Glass Off": "GO" };
 function weightMap(ex) { var m = {}; ex.forEach(function (e) { if (e.w) m[e.id] = e.w; }); return m; }
-function picker(ids, W, pk) {
-  var cur = {}, w = {}, tot = 0;
-  ids.forEach(function (id) { var v = W && W[id] && typeof W[id][pk] === "number" ? W[id][pk] : 1; w[id] = v; tot += v; cur[id] = 0; });
+function picker(ids, W, pk, cur) {
+  var w = {}, tot = 0; cur = cur || {};
+  ids.forEach(function (id) { var v = W && W[id] && typeof W[id][pk] === "number" ? W[id][pk] : 1; w[id] = v; tot += v; if (typeof cur[id] !== "number") cur[id] = 0; });
   if (tot === 0) { ids.forEach(function (id) { w[id] = 1; }); tot = ids.length; }
   return function (exclude) {
     var act = ids.filter(function (id) { return w[id] > 0; });
@@ -372,12 +372,15 @@ function picker(ids, W, pk) {
     cur[best] -= tot; return best;
   };
 }
-function buildWeeks(phase, withShort, n, W) {
-  var pk = PHASE_KEY[phase], out = [], N = n || 3 * WEEKS_SHOWN;
-  var pick = { "М1": picker(FAM["М1"], W, pk), "М2": picker(FAM["М2"], W, pk), "М3": picker(FAM[withShort ? "М3+S" : "М3"], W, pk), "М4": picker(FAM["М4"], W, pk) };
-  var pickB0 = picker(BLOCK0, W, pk), pickAlt = picker(FAM["М1"], W, pk);
+/* rs — общее состояние ротации: передаётся из фазы в фазу, чтобы следующая фаза продолжала круг, а не начинала его заново */
+function newRot() { return { g: 0, b0: {}, alt: {}, "М1": {}, "М2": {}, "М3": {}, "М4": {} }; }
+function buildWeeks(phase, withShort, n, W, rs) {
+  var pk = PHASE_KEY[phase], out = [], N = n || 3 * WEEKS_SHOWN; rs = rs || newRot();
+  var pick = { "М1": picker(FAM["М1"], W, pk, rs["М1"]), "М2": picker(FAM["М2"], W, pk, rs["М2"]), "М3": picker(FAM[withShort ? "М3+S" : "М3"], W, pk, rs["М3"]), "М4": picker(FAM["М4"], W, pk, rs["М4"]) };
+  var pickB0 = picker(BLOCK0, W, pk, rs.b0), pickAlt = picker(FAM["М1"], W, pk, rs.alt);
   for (var i = 0; i < N; i++) {
-    var items = [{ pos: 0, label: "Блок 0 · Trim Lock", mod: "М1", ex: pickB0() }], sl = sessionSlots(phase, i), used = [];
+    var gi = rs.g++;
+    var items = [{ pos: 0, label: "Блок 0 · Trim Lock", mod: "М1", ex: pickB0() }], sl = sessionSlots(phase, gi), used = [];
     sl.pat.forEach(function (m, j) {
       if (m === "PAILS") { items.push({ pos: j + 1, label: "Слот " + (j + 1), mod: "М1", ex: FIRST_EX }); return; }
       var ex = pick[m](used); used.push(ex);
@@ -392,8 +395,26 @@ function buildWeeks(phase, withShort, n, W) {
     if (fi > 1) items.splice(1, 0, items.splice(fi, 1)[0]);
     items.forEach(function (x, k) { if (k > 0) { x.pos = k; x.label = "Слот " + k; } });
     if (sl.fin) items.push({ pos: 9, label: "Финишер", mod: "М1", ex: FINISHER });
-    out.push({ idx: i, week: Math.floor(i / 3) + 1, session: "ABC".charAt(i % 3), items: items });
+    out.push({ idx: i, week: Math.floor(i / 3) + 1, session: "ABC".charAt(gi % 3), items: items });
   }
+  return out;
+}
+/* Границы фаз в днях от вылета назад; первая непустая фаза начинается с даты старта, чтобы округление не оставляло «дыр» */
+function phaseBounds(start, trip, lay) {
+  function add(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  var goS = add(trip, -Math.round(lay.go * 7)), psS = add(goS, -Math.round(lay.ps * 7)), bsS = add(psS, -Math.round(lay.bs * 7));
+  if (!(lay.fs > 0)) { if (lay.bs > 0) bsS = start; else if (lay.ps > 0) { psS = start; bsS = start; } else { goS = start; psS = start; bsS = start; } }
+  return [["Flat Spell", lay.fs, start, bsS], ["Building Swell", lay.bs, bsS, psS], ["Peak Set", lay.ps, psS, goS], ["Glass Off", lay.go, goS, trip]];
+}
+/* Весь план по датам: сессии каждой фазы, ротация непрерывна от фазы к фазе */
+function buildPlan(bounds, withShort, W) {
+  var rs = newRot(), out = {};
+  bounds.forEach(function (b) {
+    var dates = b[1] > 0 ? sessionDates(b[2], b[3]) : [];
+    var ss = dates.length ? buildWeeks(b[0], withShort, dates.length, W, rs) : [];
+    ss.forEach(function (s, k) { s.date = dates[k]; s.week = Math.floor(Math.round((dates[k] - b[2]) / 86400000) / 7) + 1; });
+    out[b[0]] = { start: b[2], end: b[3], weeks: b[1], sessions: ss };
+  });
   return out;
 }
 /* Даты сессий фазы: 3 в неделю (день 0, 2, 4 от начала фазы), пока не кончится фаза */
@@ -555,10 +576,9 @@ function videoHtml(v, used) {
 function weekHtml(phase, st, ps, lag, pd) {
   var short = !!st.eff["М3S"], go = phase === "Glass Off", bsw = phase === "Building Swell";
   /* Сессии по реальным датам фазы; без дат — типовые 4 недели (Peak Set 3, Glass Off 2) */
-  var dates = pd ? sessionDates(pd.start, pd.end) : [], today = dayStart(new Date());
-  var N = dates.length || 3 * (go ? 2 : phase === "Peak Set" ? 3 : 4);
-  var weeks = buildWeeks(phase, short, N, WMAP);
-  if (dates.length) weeks.forEach(function (s, k) { s.date = dates[k]; s.week = Math.floor(Math.round((dates[k] - pd.start) / 86400000) / 7) + 1; });
+  var today = dayStart(new Date()), weeks, dates = [];
+  if (pd && pd.sessions && pd.sessions.length) { weeks = pd.sessions; dates = weeks.map(function (x) { return x.date; }); }
+  else weeks = buildWeeks(phase, short, 3 * (go ? 2 : phase === "Peak Set" ? 3 : 4), WMAP);
   var wl = []; weeks.forEach(function (s) { if (wl.indexOf(s.week) < 0) wl.push(s.week); });
   var nextIdx = -1; if (dates.length && pd.start <= today) weeks.some(function (s, k) { if (s.date >= today) { nextIdx = k; return true; } return false; });
   var defW = nextIdx >= 0 ? weeks[nextIdx].week : wl[0];
@@ -692,8 +712,8 @@ function render() {
   if (!state.tabPicked || avail.indexOf(state.tab) < 0) state.tab = def;
   h += '<h2 class="sub-title">Неделя тренировок</h2><p class="meta">3 сессии в неделю. По умолчанию открыта текущая фаза, остальные можно посмотреть заранее. <a href="' + LIB_URL + '" target="_blank" rel="noopener">Вся библиотека упражнений</a></p><div class="tabs" role="radiogroup" aria-label="Фаза">';
   avail.forEach(function (p) { h += '<label class="tab"><input type="radio" name="ph" value="' + p + '"' + (state.tab === p ? " checked" : "") + '><span>' + p + (p === def && lay ? " · сейчас" : "") + '</span></label>'; });
-  var pdSeg = segs.filter(function (x) { return x[0] === state.tab; })[0];
-  h += '</div>' + weekHtml(state.tab, st, ps, lagging(zv), pdSeg ? { start: pdSeg[2], end: pdSeg[3] } : null);
+  var plan = lay ? buildPlan(phaseBounds(start, trip, lay), !!st.eff["М3S"], WMAP) : null;
+  h += '</div>' + weekHtml(state.tab, st, ps, lagging(zv), plan ? plan[state.tab] : null);
   if (state.gym) {
     var t = state.tab;
     h += '<div class="box2"><div class="card' + (t === "Glass Off" ? " warn" : "") + '"><h3>Свои тренировки в ' + t + '</h3>' + (t === "Glass Off" ? '<p><b>Glass Off: время отдать телу то, что ты накопил за подготовку.</b></p><p>Свои тренировки на эти дни лучше отменить, особенно силовые с отягощениями: они забирают ту самую свежесть, ради которой нужен тейпер. Хочется движения? Лёгкое кардио на среднем пульсе, во 2–3 пульсовой зоне, и всё.</p><p>Главное сейчас: сон, еда и отдых перед трипом. Режим Glass Off выстроен по научной практике периодизации, доверься ему.</p>' : '<p>Не ставь свои тренировки на те же группы мышц накануне сессии программы.</p><p>' + (t === "Peak Set" ? "В Peak Set без своей взрывной работы и плиометрики: она уже есть в программе." : "Свои силовые можно в дни без программы или после сессии.") + '</p>') + '</div></div>';
