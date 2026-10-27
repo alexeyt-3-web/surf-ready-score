@@ -491,14 +491,14 @@ function show() {
   var extOn = hist === "yes" && extensionFlag(extA, flexA);
   var redOn = Object.keys(ans).some(function (k) { return ans[k].flag === "bs" || ans[k].flag === "vest"; });
   var at = Date.now();
-  var code = "z" + ZONE_ORDER.map(function (id) { return String(zmap[id]); }).join("_") + (prevSrs !== null ? "-p" + prevSrs : "") + (extOn ? "-e1" : "") + (redOn ? "-r1" : "") + "-a" + at;
+  var code = "z" + ZONE_ORDER.map(function (id) { return String(zmap[id]); }).join("_") + (prevSrs !== null ? "-p" + prevSrs : "") + (extOn ? "-e1" : "") + (redOn ? "-r1" : "") + (ans.core1 ? "-b" + ans.core1.s : "") + "-a" + at;
   h += '<div class="plan">' + (RETEST ? '<h3>Пересдача готова</h3><p>Вернись в планировщик: новые оценки встанут в план, прошлые останутся рядом для сравнения.</p>' : '<h3>Дальше: план до трипа</h3><p>Оценки зон перенесутся в планировщик сами, вводить ничего не нужно.</p>') + '<a class="btn" href="' + PLANNER_URL + '#' + code + '" >' + (RETEST ? "Вернуться в план" : "Построить план тренировок") + '</a></div>';
   var summary = "SRS " + f1(r.srs) + "/10, приоритетная зона: " + prioNames.join(", ");
   h += '<div class="actions"><button class="btn ghost" id="copy">Скопировать результат</button><button class="btn ghost" id="again">Пройти заново</button><span class="tip" id="tip"></span></div>';
 
   var res = $("result"); res.innerHTML = h; res.hidden = false;
   try { localStorage.setItem(KEY, JSON.stringify({ srs: r.srs, at: Date.now() })); } catch (e) {}
-  try { localStorage.setItem("ess-srs-zones", JSON.stringify({ zones: zmap, prev: prevSrs, ext: extOn, red: redOn, at: at })); } catch (e) {}
+  try { localStorage.setItem("ess-srs-zones", JSON.stringify({ zones: zmap, prev: prevSrs, ext: extOn, red: redOn, b: ans.core1 ? ans.core1.s : null, at: at })); } catch (e) {}
   res.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 
   $("copy").onclick = function () {
