@@ -102,6 +102,11 @@ h1 { font-size: clamp(36px, 10vw, 58px); line-height: 1; font-weight: 800; lette
 .tab input:checked + span { background: var(--sage); border-color: var(--sage-deep); font-weight: 800; }
 .tab input:focus-visible + span { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .tabs.small .tab span { padding: 6px 12px; font-size: 13px; }
+.stick { position: sticky; top: 0; z-index: 5; margin: 10px -16px 0; width: calc(100% + 32px); max-width: calc(100% + 32px); min-width: 0; padding: 4px 16px 10px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.stick .tabs { margin-top: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; padding-bottom: 2px; }
+.stick .tabs::-webkit-scrollbar { display: none; }
+.stick .tab { flex: none; }
+.stick .tab span { padding: 6px 12px; font-size: 13px; white-space: nowrap; }
 .meta { margin-top: 12px; font-size: 14px; color: var(--muted); }
 .meta b { color: var(--ink); }
 .sess.next { border-color: var(--ink); }
@@ -745,12 +750,12 @@ function render() {
   var avail = ["Flat Spell", "Building Swell", "Peak Set", "Glass Off"];
   var def = phaseNow === "После трипа" ? "Flat Spell" : phaseNow; state.lastDef = def;
   if (!state.tabPicked || avail.indexOf(state.tab) < 0) state.tab = def;
-  h += '<h2 class="sub-title">Неделя тренировок</h2><p class="meta">3 сессии в неделю. По умолчанию открыта текущая фаза, остальные можно посмотреть заранее. <a href="' + LIB_URL + '" target="_blank" rel="noopener">Вся библиотека упражнений</a></p><div class="tabs" role="radiogroup" aria-label="Фаза">';
+  h += '<h2 class="sub-title">Неделя тренировок</h2><p class="meta">3 сессии в неделю. По умолчанию открыта текущая фаза, остальные можно посмотреть заранее. <a href="' + LIB_URL + '" target="_blank" rel="noopener">Вся библиотека упражнений</a></p><div class="stick"><div class="tabs" role="radiogroup" aria-label="Фаза">';
   avail.forEach(function (p) { h += '<label class="tab"><input type="radio" name="ph" value="' + p + '"' + (state.tab === p ? " checked" : "") + '><span>' + p + (p === def && lay ? " · сейчас" : "") + '</span></label>'; });
   var fp = [FINISHER]; if (st.eff["М1"] === "P2" && state.over["М1"] !== "closed") fp.push(HOLD_P2_ID); if (st.eff["М1"]) fp.push("m1-squat"); if (ORDER.indexOf(st.eff["М2"]) >= 3 && state.over["М2"] !== "closed") fp.push("m2-pull");
   var ao = { weak: weakZones(zv), retest: !!state.prevZ, acc: { "Flat Spell": true, "Building Swell": true, "Peak Set": !!state.prevZ }, fin: fp };
   var plan = lay ? buildPlan(phaseBounds(start, trip, lay), !!st.eff["М3S"], WMAP, ao) : null;
-  h += '</div>' + weekHtml(state.tab, st, ps, ao, plan ? plan[state.tab] : null);
+  h += '</div></div>' + weekHtml(state.tab, st, ps, ao, plan ? plan[state.tab] : null);
   if (state.gym) {
     var t = state.tab;
     h += '<div class="box2"><div class="card' + (t === "Glass Off" ? " warn" : "") + '"><h3>Свои тренировки в ' + t + '</h3>' + (t === "Glass Off" ? '<p><b>Glass Off: время отдать телу то, что ты накопил за подготовку.</b></p><p>Свои тренировки на эти дни лучше отменить, особенно силовые с отягощениями: они забирают ту самую свежесть, ради которой нужен тейпер. Хочется движения? Лёгкое кардио на среднем пульсе, во 2–3 пульсовой зоне, и всё.</p><p>Главное сейчас: сон, еда и отдых перед трипом. Режим Glass Off выстроен по научной практике периодизации, доверься ему.</p>' : '<p>Не ставь свои тренировки на те же группы мышц накануне сессии программы.</p><p>' + (t === "Peak Set" ? "В Peak Set без своей взрывной работы и плиометрики: она уже есть в программе." : "Свои силовые можно в дни без программы или после сессии.") + '</p>') + '</div></div>';
@@ -758,6 +763,7 @@ function render() {
   var txt = "SRS " + (srsNow === null ? "–" : srsNow.toFixed(1)) + (lay ? ". Трип " + fmt(trip) + ". " + segs.map(function (s) { return s[0] + " " + nw(s[1]) + " нед. с " + fmt(s[2]); }).join(", ") : "") + ". Ступени: " + MODS.map(function (m) { return m.name + " " + (st.eff[m.key] || "–"); }).join(", ") + ".";
   h += '<div class="actions"><button class="btn main" id="copy" type="button">Скопировать план</button><span class="tip" id="tip"></span></div>';
   res.innerHTML = h;
+  try { var sk = res.querySelector(".stick"), wt = res.querySelector(".tabs.small"); if (sk && wt) sk.appendChild(wt); if (sk) Array.prototype.forEach.call(sk.querySelectorAll(".tabs"), function (t) { var c = t.querySelector("input:checked"); if (c && c.parentNode) t.scrollLeft = Math.max(0, c.parentNode.offsetLeft - 16); }); } catch (e) {}
   $("copy").onclick = function () {
     function done(ok) { $("tip").textContent = ok ? "Скопировано" : "Не вышло, выдели текст вручную"; }
     try { navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
